@@ -24,10 +24,41 @@ def clamp(text, max_length):
     return text.strip()[:max_length]
 
 
+class _TursoCursor:
+    """Adapts a libsql_client ResultSet to the sqlite3 cursor shape (.description/.fetchall)."""
+
+    def __init__(self, result_set):
+        self._rows = [tuple(row) for row in result_set.rows]
+        self.description = [(c,) for c in result_set.columns] if result_set.columns else None
+
+    def fetchall(self):
+        return self._rows
+
+
+class TursoConn:
+    """Adapts a libsql_client sync Client to the sqlite3 connection shape used below."""
+
+    def __init__(self, client):
+        self._client = client
+
+    def execute(self, sql, params=()):
+        return _TursoCursor(self._client.execute(sql, list(params)))
+
+    def commit(self):
+        pass  # each statement is already committed over HTTP
+
+    def close(self):
+        self._client.close()
+
+
 def connect_db():
     if TURSO_URL:
-        import libsql
-        return libsql.connect(database=TURSO_URL, auth_token=TURSO_AUTH_TOKEN)
+        import libsql_client
+        # libsql_client defaults libsql:// URLs to a WebSocket transport, which isn't
+        # reliable on every network path. Force plain HTTPS, which works everywhere.
+        url = TURSO_URL.replace("libsql://", "https://", 1)
+        client = libsql_client.create_client_sync(url=url, auth_token=TURSO_AUTH_TOKEN)
+        return TursoConn(client)
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
