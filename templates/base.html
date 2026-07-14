@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Planszówki na wyjazd{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <h1>🎲 Planszówki na wyjazd</h1>
+        {% if user %}
+        <div class="whoami">
+            Zalogowano jako <strong>{{ user }}</strong>
+            <form method="post" action="{{ url_for('logout') }}" class="inline-form">
+                <button type="submit" class="link-btn">Wyloguj się</button>
+            </form>
+        </div>
+        {% endif %}
+    </header>
+    {% if user %}
+    <nav class="tabbar">
+        <a href="{{ url_for('games_view') }}" class="tab {{ 'active' if request.endpoint == 'games_view' else '' }}">Wszystkie gry</a>
+        <a href="{{ url_for('my_view') }}" class="tab {{ 'active' if request.endpoint == 'my_view' else '' }}">Moje gry</a>
+        <a href="{{ url_for('account_view') }}" class="tab {{ 'active' if request.endpoint == 'account_view' else '' }}">Konto</a>
+    </nav>
+    {% endif %}
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
