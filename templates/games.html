@@ -68,11 +68,13 @@
             <p class="owner">Życzenie od: {{ wish['requester_name'] }}</p>
             {% if wish['notes'] %}<p class="notes">{{ wish['notes'] }}</p>{% endif %}
 
+            {% if wish['requester_name'] != user %}
             <div class="card-actions">
                 <form method="post" action="{{ url_for('bring_wish', wish_id=wish['id']) }}" class="inline-form">
                     <button type="submit">Ja to zabiorę!</button>
                 </form>
             </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
