@@ -86,6 +86,35 @@ main {
 
 .two-col .panel { margin-bottom: 0; }
 
+.quick-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.quick-add-item {
+    flex: 1 1 260px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 0.75rem;
+}
+
+.quick-add-item summary {
+    cursor: pointer;
+    padding: 0.75rem 0.25rem;
+    font-weight: 600;
+    color: var(--accent);
+    list-style: none;
+}
+
+.quick-add-item summary::-webkit-details-marker { display: none; }
+
+.quick-add-item[open] { padding-bottom: 0.75rem; }
+
+.quick-add-item .add-form { margin: 0.25rem 0 0; }
+
 @media (max-width: 720px) {
     .two-col { grid-template-columns: 1fr; }
 

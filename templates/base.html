@@ -20,8 +20,7 @@
     </header>
     {% if user %}
     <nav class="tabbar">
-        <a href="{{ url_for('games_view') }}" class="tab {{ 'active' if request.endpoint == 'games_view' else '' }}">Wszystkie gry</a>
-        <a href="{{ url_for('my_view') }}" class="tab {{ 'active' if request.endpoint == 'my_view' else '' }}">Moje gry</a>
+        <a href="{{ url_for('games_view') }}" class="tab {{ 'active' if request.endpoint == 'games_view' else '' }}">Gry</a>
         <a href="{{ url_for('account_view') }}" class="tab {{ 'active' if request.endpoint == 'account_view' else '' }}">Konto</a>
     </nav>
     {% endif %}

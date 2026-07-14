@@ -2,6 +2,25 @@
 {% block title %}Wszystkie gry – Planszówki na wyjazd{% endblock %}
 {% block content %}
 
+<div class="quick-add">
+    <details class="quick-add-item">
+        <summary>+ Zabieram grę</summary>
+        <form method="post" action="{{ url_for('add_game') }}" class="add-form">
+            <input type="text" name="name" placeholder="Nazwa gry" maxlength="100" required>
+            <input type="text" name="notes" placeholder="Notatki (liczba graczy, czas gry itp.) – opcjonalnie" maxlength="300">
+            <button type="submit">Dodaj grę</button>
+        </form>
+    </details>
+    <details class="quick-add-item">
+        <summary>+ Dodaj do listy życzeń</summary>
+        <form method="post" action="{{ url_for('add_wish') }}" class="add-form">
+            <input type="text" name="name" placeholder="Nazwa gry" maxlength="100" required>
+            <input type="text" name="notes" placeholder="Notatki – opcjonalnie" maxlength="300">
+            <button type="submit">Dodaj do listy życzeń</button>
+        </form>
+    </details>
+</div>
+
 <div class="two-col two-col-mobile">
 <section class="panel">
     <h2>Gry, które ludzie zabierają</h2>

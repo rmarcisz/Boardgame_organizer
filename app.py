@@ -183,26 +183,6 @@ def games_view():
     )
 
 
-@app.route("/moje")
-def my_view():
-    db = get_db()
-    name = current_name()
-
-    my_games = query_all(
-        db, "SELECT * FROM games WHERE owner_name = ? ORDER BY created_at DESC", (name,)
-    )
-    my_wishes = query_all(
-        db, "SELECT * FROM wishes WHERE requester_name = ? ORDER BY created_at DESC", (name,)
-    )
-
-    return render_template(
-        "my_games.html",
-        user=name,
-        my_games=my_games,
-        my_wishes=my_wishes,
-    )
-
-
 @app.route("/konto", methods=["GET", "POST"])
 def account_view():
     name = current_name()
@@ -214,7 +194,22 @@ def account_view():
         else:
             session["name"] = new_name
             name = new_name
-    return render_template("account.html", user=name, error=error)
+
+    db = get_db()
+    my_games = query_all(
+        db, "SELECT * FROM games WHERE owner_name = ? ORDER BY created_at DESC", (name,)
+    )
+    my_wishes = query_all(
+        db, "SELECT * FROM wishes WHERE requester_name = ? ORDER BY created_at DESC", (name,)
+    )
+
+    return render_template(
+        "account.html",
+        user=name,
+        error=error,
+        my_games=my_games,
+        my_wishes=my_wishes,
+    )
 
 
 @app.route("/games/add", methods=["POST"])
@@ -229,7 +224,7 @@ def add_game():
             (name, notes, current_name(), image_url),
         )
         db.commit()
-    return redirect(url_for("my_view"))
+    return redirect(url_for("games_view"))
 
 
 @app.route("/games/<int:game_id>/delete", methods=["POST"])
@@ -247,7 +242,7 @@ def delete_game(game_id):
                 )
         db.execute("DELETE FROM games WHERE id = ?", (game_id,))
         db.commit()
-    return redirect(url_for("my_view"))
+    return redirect(url_for("account_view"))
 
 
 @app.route("/games/<int:game_id>/interest", methods=["POST"])
@@ -283,7 +278,7 @@ def add_wish():
             (name, notes, current_name(), image_url),
         )
         db.commit()
-    return redirect(url_for("my_view"))
+    return redirect(url_for("games_view"))
 
 
 @app.route("/wishes/<int:wish_id>/delete", methods=["POST"])
@@ -294,7 +289,7 @@ def delete_wish(wish_id):
         (wish_id, current_name()),
     )
     db.commit()
-    return redirect(url_for("my_view"))
+    return redirect(url_for("account_view"))
 
 
 @app.route("/wishes/<int:wish_id>/bring", methods=["POST"])
