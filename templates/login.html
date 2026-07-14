@@ -6,7 +6,7 @@
     <p class="muted">Wpisz swoje imię, aby dołączyć. Za pierwszym razem utworzy nowy profil; to samo imię zaloguje Cię ponownie.</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     <form method="post">
-        <input type="text" name="name" placeholder="Twoje imię" autofocus required>
+        <input type="text" name="name" placeholder="Twoje imię" maxlength="50" autofocus required>
         <button type="submit">Dalej</button>
     </form>
 </div>

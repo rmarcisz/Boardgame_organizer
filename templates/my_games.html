@@ -7,8 +7,8 @@
     <h2>Gry, które zabieram</h2>
 
     <form method="post" action="{{ url_for('add_game') }}" class="add-form">
-        <input type="text" name="name" placeholder="Nazwa gry" required>
-        <input type="text" name="notes" placeholder="Notatki (liczba graczy, czas gry itp.) – opcjonalnie">
+        <input type="text" name="name" placeholder="Nazwa gry" maxlength="100" required>
+        <input type="text" name="notes" placeholder="Notatki (liczba graczy, czas gry itp.) – opcjonalnie" maxlength="300">
         <button type="submit">Dodaj grę</button>
     </form>
 
@@ -45,8 +45,8 @@
     <h2>Moja lista życzeń</h2>
 
     <form method="post" action="{{ url_for('add_wish') }}" class="add-form">
-        <input type="text" name="name" placeholder="Nazwa gry" required>
-        <input type="text" name="notes" placeholder="Notatki – opcjonalnie">
+        <input type="text" name="name" placeholder="Nazwa gry" maxlength="100" required>
+        <input type="text" name="notes" placeholder="Notatki – opcjonalnie" maxlength="300">
         <button type="submit">Dodaj do listy życzeń</button>
     </form>
 
