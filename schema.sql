@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS games (
     owner_name TEXT NOT NULL,
     bgg_id INTEGER,
     image_url TEXT,
+    origin_wish_requester TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

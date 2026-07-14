@@ -203,6 +203,8 @@ button:hover { background: var(--accent-dark); }
 
 .owner { margin: 0; font-size: 0.85rem; color: var(--muted); }
 
+.origin-note { font-size: 0.8rem; font-style: italic; margin: 0; }
+
 .notes { margin: 0; font-size: 0.9rem; }
 
 .interested { margin: 0; font-size: 0.85rem; }

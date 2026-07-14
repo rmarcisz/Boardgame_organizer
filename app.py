@@ -31,11 +31,15 @@ def init_db():
     db = sqlite3.connect(DB_PATH)
     db.executescript(SCHEMA_PATH.read_text())
     db.commit()
-    # Additive migration for databases created before image_url existed.
+    # Additive migrations for databases created before a column existed.
     # Never drop/recreate tables here - that would destroy real trip data.
-    for table in ("games", "wishes"):
+    for table, column, coltype in [
+        ("games", "image_url", "TEXT"),
+        ("wishes", "image_url", "TEXT"),
+        ("games", "origin_wish_requester", "TEXT"),
+    ]:
         try:
-            db.execute(f"ALTER TABLE {table} ADD COLUMN image_url TEXT")
+            db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
         except sqlite3.OperationalError:
             pass  # column already exists
     db.commit()
@@ -160,11 +164,18 @@ def add_game():
 @app.route("/games/<int:game_id>/delete", methods=["POST"])
 def delete_game(game_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM games WHERE id = ? AND owner_name = ?",
+    game = db.execute(
+        "SELECT * FROM games WHERE id = ? AND owner_name = ?",
         (game_id, current_name()),
-    )
-    db.commit()
+    ).fetchone()
+    if game:
+        if game["origin_wish_requester"]:
+            db.execute(
+                "INSERT INTO wishes (name, notes, requester_name, image_url) VALUES (?, ?, ?, ?)",
+                (game["name"], game["notes"], game["origin_wish_requester"], game["image_url"]),
+            )
+        db.execute("DELETE FROM games WHERE id = ?", (game_id,))
+        db.commit()
     return redirect(url_for("my_view"))
 
 
@@ -222,8 +233,8 @@ def bring_wish(wish_id):
     wish = db.execute("SELECT * FROM wishes WHERE id = ?", (wish_id,)).fetchone()
     if wish:
         db.execute(
-            "INSERT INTO games (name, notes, owner_name, image_url) VALUES (?, ?, ?, ?)",
-            (wish["name"], wish["notes"], current_name(), wish["image_url"]),
+            "INSERT INTO games (name, notes, owner_name, image_url, origin_wish_requester) VALUES (?, ?, ?, ?, ?)",
+            (wish["name"], wish["notes"], current_name(), wish["image_url"], wish["requester_name"]),
         )
         db.execute("DELETE FROM wishes WHERE id = ?", (wish_id,))
         db.commit()

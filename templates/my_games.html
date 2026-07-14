@@ -24,9 +24,16 @@
                 <h3>{{ game['name'] }}</h3>
             </div>
             {% if game['notes'] %}<p class="notes">{{ game['notes'] }}</p>{% endif %}
+            {% if game['origin_wish_requester'] %}
+            <p class="muted origin-note">Ktoś to chciał na liście życzeń – rezygnacja wróci grę na listę.</p>
+            {% endif %}
             <div class="card-actions">
                 <form method="post" action="{{ url_for('delete_game', game_id=game['id']) }}" class="inline-form">
+                    {% if game['origin_wish_requester'] %}
+                    <button type="submit" class="link-btn danger">Rezygnuję (wróć do listy życzeń)</button>
+                    {% else %}
                     <button type="submit" class="link-btn danger">Usuń</button>
+                    {% endif %}
                 </form>
             </div>
         </div>
