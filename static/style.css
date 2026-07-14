@@ -123,7 +123,8 @@ main {
     .two-col-mobile .card-grid { grid-template-columns: 1fr; gap: 0.6rem; }
     .two-col-mobile .card { padding: 0.6rem; gap: 0.3rem; }
     .two-col-mobile .card-thumb { height: 90px; }
-    .two-col-mobile .card h3 { font-size: 0.9rem; }
+    .two-col-mobile .card h3,
+    .two-col-mobile .card-name { font-size: 0.9rem; }
     .two-col-mobile .owner,
     .two-col-mobile .notes,
     .two-col-mobile .interested { font-size: 0.75rem; }
@@ -217,6 +218,40 @@ button:hover { background: var(--accent-dark); }
 }
 
 .card h3 { margin: 0; font-size: 1.05rem; }
+
+.card > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.card > summary::-webkit-details-marker { display: none; }
+
+.card-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.card > summary::after {
+    content: "⌄";
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: transform 0.15s ease;
+}
+
+.card[open] > summary::after { transform: rotate(180deg); }
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-top: 0.5rem;
+}
 
 .tag {
     font-size: 0.7rem;
