@@ -101,6 +101,19 @@ def group_wishes(rows):
     return [groups[key] for key in order]
 
 
+def group_games(rows):
+    """Merge game rows that share a name and notes into one card with a list of owners."""
+    groups = {}
+    order = []
+    for row in rows:
+        key = (row["name"].strip().lower(), (row["notes"] or "").strip().lower())
+        if key not in groups:
+            groups[key] = {**row, "owners": []}
+            order.append(key)
+        groups[key]["owners"].append(row["owner_name"])
+    return [groups[key] for key in order]
+
+
 def init_db():
     db = connect_db()
     for statement in SCHEMA_PATH.read_text().split(";"):
@@ -162,7 +175,7 @@ def games_view():
     db = get_db()
     name = current_name()
 
-    games = query_all(db, "SELECT * FROM games ORDER BY created_at DESC")
+    games = group_games(query_all(db, "SELECT * FROM games ORDER BY created_at DESC"))
 
     interest_names = {}  # game_id -> list of names
     my_interests = set()

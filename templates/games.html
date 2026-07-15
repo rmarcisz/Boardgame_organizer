@@ -23,7 +23,7 @@
 
 <div class="two-col two-col-mobile">
 <section class="panel">
-    <h2>Gry, które ludzie zabierają</h2>
+    <h2>Zabierane gry</h2>
 
     {% if not games %}
     <p class="muted">Nikt jeszcze nie dodał gry.</p>
@@ -34,32 +34,28 @@
         <details class="card">
             <summary>
                 <span class="card-name">{{ game['name'] }}</span>
-                <span class="tag {{ 'mine' if game['owner_name'] == user else '' }}">{{ game['owner_name'] }}</span>
+                <span class="tag {{ 'mine' if user in game['owners'] else '' }}">{{ game['owners'][0] }}{% if game['owners']|length > 1 %} +{{ game['owners']|length - 1 }}{% endif %}</span>
             </summary>
             <div class="card-body">
                 {% if game['image_url'] %}<img class="card-thumb" src="{{ game['image_url'] }}" alt="">{% endif %}
                 {% if game['notes'] %}<p class="notes">{{ game['notes'] }}</p>{% endif %}
+                {% if game['owners']|length > 1 %}<p class="owner">Zabierają: {{ game['owners'] | join(', ') }}</p>{% endif %}
 
                 {% set interested = interest_names.get(game['id'], []) %}
-                <p class="interested">
-                    {% if interested %}
-                        Zainteresowani: {{ interested | join(', ') }}
-                    {% else %}
-                        <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
-                    {% endif %}
-                </p>
-
-                {% if game['owner_name'] != user %}
                 <div class="card-actions">
+                    {% if user not in game['owners'] %}
                     <form method="post" action="{{ url_for('toggle_interest', game_id=game['id']) }}" class="inline-form">
-                        {% if game['id'] in my_interests %}
-                        <button type="submit" class="btn-secondary">Już mnie to nie interesuje</button>
-                        {% else %}
-                        <button type="submit">Interesuje mnie</button>
-                        {% endif %}
+                        <button type="submit" class="star-btn {{ 'active' if game['id'] in my_interests else '' }}" title="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}" aria-label="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}">{{ '★' if game['id'] in my_interests else '☆' }}</button>
                     </form>
+                    {% endif %}
+                    <span class="interested">
+                        {% if interested %}
+                            Zainteresowani: {{ interested | join(', ') }}
+                        {% else %}
+                            <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
+                        {% endif %}
+                    </span>
                 </div>
-                {% endif %}
             </div>
         </details>
         {% endfor %}
@@ -67,7 +63,7 @@
 </section>
 
 <section class="panel">
-    <h2>Lista życzeń – gry, które chcielibyśmy, żeby ktoś zabrał</h2>
+    <h2>Lista życzeń</h2>
 
     {% if not wishes %}
     <p class="muted">Lista życzeń jest jeszcze pusta.</p>
