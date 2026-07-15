@@ -139,6 +139,19 @@ def name_color(name):
     return NAME_COLORS[int(digest, 16) % len(NAME_COLORS)]
 
 
+POLISH_ALPHABET = "aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźż"
+POLISH_ORDER = {ch: i for i, ch in enumerate(POLISH_ALPHABET)}
+
+
+def polish_sort_key(text):
+    """Sort key following Polish alphabetical order (e.g. l < ł < m)."""
+    return [POLISH_ORDER.get(ch, len(POLISH_ALPHABET) + ord(ch)) for ch in text.strip().lower()]
+
+
+def sort_by_name(rows):
+    return sorted(rows, key=lambda row: polish_sort_key(row["name"]))
+
+
 def group_wishes(rows):
     """Merge wish rows that share a name into one card with a list of requesters."""
     groups = {}
@@ -256,7 +269,7 @@ def games_view():
     db = get_db()
     name = current_name()
 
-    games = group_games(query_all(db, "SELECT * FROM games ORDER BY name COLLATE NOCASE"))
+    games = group_games(sort_by_name(query_all(db, "SELECT * FROM games")))
 
     interest_names = {}  # game_id -> list of names
     my_interests = set()
@@ -265,7 +278,7 @@ def games_view():
         if row["user_name"] == name:
             my_interests.add(row["game_id"])
 
-    wishes = group_wishes(query_all(db, "SELECT * FROM wishes ORDER BY name COLLATE NOCASE"))
+    wishes = group_wishes(sort_by_name(query_all(db, "SELECT * FROM wishes")))
 
     return render_template(
         "games.html",
@@ -282,11 +295,11 @@ def account_view():
     name = current_name()
     db = get_db()
 
-    my_games = query_all(
-        db, "SELECT * FROM games WHERE owner_name = ? ORDER BY name COLLATE NOCASE", (name,)
+    my_games = sort_by_name(
+        query_all(db, "SELECT * FROM games WHERE owner_name = ?", (name,))
     )
-    my_wishes = query_all(
-        db, "SELECT * FROM wishes WHERE requester_name = ? ORDER BY name COLLATE NOCASE", (name,)
+    my_wishes = sort_by_name(
+        query_all(db, "SELECT * FROM wishes WHERE requester_name = ?", (name,))
     )
     player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
 
