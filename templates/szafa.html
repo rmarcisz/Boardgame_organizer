@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Szafa – Zgrani 2026 - planszówkowy organizer{% endblock %}
+{% block content %}
+
+<div class="quick-add">
+    <details class="quick-add-item">
+        <summary>+ Dodaj grę do szafy</summary>
+        <form method="post" action="{{ url_for('add_collection_game') }}" class="add-form">
+            <input type="text" name="name" placeholder="Nazwa gry" maxlength="100" required>
+            <input type="text" name="notes" placeholder="Notatki – opcjonalnie" maxlength="300">
+            <button type="submit">Dodaj do szafy</button>
+        </form>
+    </details>
+</div>
+
+<section class="panel">
+    <h2>Szafa – gry, które ludzie mają w domu</h2>
+
+    {% if not collection %}
+    <p class="muted">Szafa jest jeszcze pusta.</p>
+    {% endif %}
+
+    <div class="card-grid">
+        {% for g in collection %}
+        {% set requesters = requests_by_game.get(g['id'], []) %}
+        <details class="card">
+            <summary>
+                <span class="card-name">{{ g['name'] }}</span>
+                <span class="tag" style="background-color: {{ g['owner_name'] | name_color }};">{{ g['owner_name'] }}</span>
+            </summary>
+            <div class="card-body">
+                {% if g['notes'] %}<p class="notes">{{ g['notes'] }}</p>{% endif %}
+
+                <div class="card-actions">
+                    {% if user == g['owner_name'] %}
+                    <form method="post" action="{{ url_for('delete_collection_game', collection_game_id=g['id']) }}" class="inline-form">
+                        <button type="submit" class="link-btn danger">Usuń z szafy</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{{ url_for('toggle_collection_request', collection_game_id=g['id']) }}" class="inline-form">
+                        {% if g['id'] in my_requests %}
+                        <button type="submit" class="btn-secondary">Anuluj prośbę</button>
+                        {% else %}
+                        <button type="submit">Poproś o przywiezienie</button>
+                        {% endif %}
+                    </form>
+                    {% endif %}
+                    {% if requesters %}
+                        {% for person in requesters %}
+                        <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="muted">Nikt jeszcze nie poprosił</span>
+                    {% endif %}
+                </div>
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+
+{% endblock %}

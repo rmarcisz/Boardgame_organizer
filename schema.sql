@@ -55,3 +55,32 @@ CREATE TABLE IF NOT EXISTS wish_comments (
     text TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_name TEXT NOT NULL,
+    session_time TEXT NOT NULL,
+    notes TEXT,
+    organizer_name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS session_joins (
+    user_name TEXT NOT NULL,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_name, session_id)
+);
+
+CREATE TABLE IF NOT EXISTS collection_games (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    notes TEXT,
+    owner_name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS collection_requests (
+    user_name TEXT NOT NULL,
+    collection_game_id INTEGER NOT NULL REFERENCES collection_games(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_name, collection_game_id)
+);

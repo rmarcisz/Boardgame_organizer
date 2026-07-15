@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Rozgrywki – Zgrani 2026 - planszówkowy organizer{% endblock %}
+{% block content %}
+
+<div class="quick-add">
+    <details class="quick-add-item">
+        <summary>+ Zaproponuj rozgrywkę</summary>
+        <form method="post" action="{{ url_for('add_session') }}" class="add-form">
+            <input type="text" name="game_name" placeholder="Nazwa gry" maxlength="100" required>
+            <input type="datetime-local" name="session_time" required>
+            <input type="text" name="notes" placeholder="Notatki (liczba miejsc, miejsce spotkania itp.) – opcjonalnie" maxlength="300">
+            <button type="submit">Dodaj rozgrywkę</button>
+        </form>
+    </details>
+</div>
+
+<section class="panel">
+    <h2>Zaplanowane rozgrywki</h2>
+
+    {% if not sessions %}
+    <p class="muted">Nikt jeszcze nie zaproponował rozgrywki.</p>
+    {% endif %}
+
+    <div class="card-grid">
+        {% for s in sessions %}
+        {% set joined = joins_by_session.get(s['id'], []) %}
+        <details class="card">
+            <summary>
+                <span class="card-name">{{ s['game_name'] }}</span>
+                <span class="tag" style="background-color: {{ s['organizer_name'] | name_color }};">{{ s['organizer_name'] }}{% if joined %} +{{ joined|length }}{% endif %}</span>
+            </summary>
+            <div class="card-body">
+                <p class="notes">{{ s['session_time'].replace('T', ' ') }}</p>
+                {% if s['notes'] %}<p class="notes">{{ s['notes'] }}</p>{% endif %}
+                <p class="interested">Gra:
+                    {% for person in [s['organizer_name']] + joined %}
+                    <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
+                    {% endfor %}
+                </p>
+
+                <div class="card-actions">
+                    {% if user == s['organizer_name'] %}
+                    <form method="post" action="{{ url_for('delete_session', session_id=s['id']) }}" class="inline-form">
+                        <button type="submit" class="link-btn danger">Odwołaj</button>
+                    </form>
+                    {% elif s['id'] in my_joins %}
+                    <form method="post" action="{{ url_for('toggle_session_join', session_id=s['id']) }}" class="inline-form">
+                        <button type="submit" class="btn-secondary">Rezygnuję</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{{ url_for('toggle_session_join', session_id=s['id']) }}" class="inline-form">
+                        <button type="submit">Dołączam!</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+
+{% endblock %}

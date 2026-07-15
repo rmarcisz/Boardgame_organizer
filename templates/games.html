@@ -123,6 +123,9 @@
                         <form method="post" action="{{ url_for('bring_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
                             <button type="submit">Ja to zabiorę!</button>
                         </form>
+                        <form method="post" action="{{ url_for('join_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
+                            <button type="submit" class="btn-secondary">Też chcę!</button>
+                        </form>
                         {% endif %}
                         {{ comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id'])) }}
                     </div>

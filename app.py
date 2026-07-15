@@ -21,6 +21,7 @@ NAME_MAX_LENGTH = 50
 GAME_NAME_MAX_LENGTH = 100
 NOTES_MAX_LENGTH = 300
 COMMENT_MAX_LENGTH = 255
+SESSION_TIME_MAX_LENGTH = 32
 
 NAME_COLORS = [
     "#c1552c",  # orange
@@ -524,6 +525,26 @@ def delete_wish(wish_id):
     return redirect(url_for("account_view"))
 
 
+@app.route("/wishes/<int:wish_id>/join", methods=["POST"])
+def join_wish(wish_id):
+    db = get_db()
+    name = current_name()
+    wish = query_one(db, "SELECT * FROM wishes WHERE id = ?", (wish_id,))
+    if wish:
+        already = query_one(
+            db,
+            "SELECT 1 FROM wishes WHERE name = ? COLLATE NOCASE AND requester_name = ?",
+            (wish["name"], name),
+        )
+        if not already:
+            db.execute(
+                "INSERT INTO wishes (name, notes, requester_name, image_url) VALUES (?, ?, ?, ?)",
+                (wish["name"], wish["notes"], name, wish["image_url"]),
+            )
+            db.commit()
+    return redirect(url_for("games_view"))
+
+
 @app.route("/wishes/<int:wish_id>/bring", methods=["POST"])
 def bring_wish(wish_id):
     db = get_db()
@@ -562,6 +583,149 @@ def bring_wish(wish_id):
         db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
         db.commit()
     return redirect(url_for("games_view"))
+
+
+@app.route("/rozgrywki")
+def sessions_view():
+    db = get_db()
+    name = current_name()
+
+    sessions = query_all(db, "SELECT * FROM sessions ORDER BY session_time")
+
+    joins_by_session = {}
+    my_joins = set()
+    for row in query_all(db, "SELECT user_name, session_id FROM session_joins"):
+        joins_by_session.setdefault(row["session_id"], []).append(row["user_name"])
+        if row["user_name"] == name:
+            my_joins.add(row["session_id"])
+
+    return render_template(
+        "sessions.html",
+        user=name,
+        sessions=sessions,
+        joins_by_session=joins_by_session,
+        my_joins=my_joins,
+    )
+
+
+@app.route("/rozgrywki/add", methods=["POST"])
+def add_session():
+    game_name = clamp(request.form.get("game_name", ""), GAME_NAME_MAX_LENGTH)
+    session_time = clamp(request.form.get("session_time", ""), SESSION_TIME_MAX_LENGTH)
+    notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
+    if game_name and session_time:
+        db = get_db()
+        db.execute(
+            "INSERT INTO sessions (game_name, session_time, notes, organizer_name) VALUES (?, ?, ?, ?)",
+            (game_name, session_time, notes, current_name()),
+        )
+        db.commit()
+    return redirect(url_for("sessions_view"))
+
+
+@app.route("/rozgrywki/<int:session_id>/join", methods=["POST"])
+def toggle_session_join(session_id):
+    db = get_db()
+    name = current_name()
+    existing = query_one(
+        db,
+        "SELECT 1 FROM session_joins WHERE user_name = ? AND session_id = ?",
+        (name, session_id),
+    )
+    if existing:
+        db.execute(
+            "DELETE FROM session_joins WHERE user_name = ? AND session_id = ?",
+            (name, session_id),
+        )
+    else:
+        db.execute(
+            "INSERT INTO session_joins (user_name, session_id) VALUES (?, ?)",
+            (name, session_id),
+        )
+    db.commit()
+    return redirect(url_for("sessions_view"))
+
+
+@app.route("/rozgrywki/<int:session_id>/delete", methods=["POST"])
+def delete_session(session_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM sessions WHERE id = ? AND organizer_name = ?",
+        (session_id, current_name()),
+    )
+    db.commit()
+    return redirect(url_for("sessions_view"))
+
+
+@app.route("/szafa")
+def szafa_view():
+    db = get_db()
+    name = current_name()
+
+    collection = sort_by_name(query_all(db, "SELECT * FROM collection_games"))
+
+    requests_by_game = {}
+    my_requests = set()
+    for row in query_all(db, "SELECT user_name, collection_game_id FROM collection_requests"):
+        requests_by_game.setdefault(row["collection_game_id"], []).append(row["user_name"])
+        if row["user_name"] == name:
+            my_requests.add(row["collection_game_id"])
+
+    return render_template(
+        "szafa.html",
+        user=name,
+        collection=collection,
+        requests_by_game=requests_by_game,
+        my_requests=my_requests,
+    )
+
+
+@app.route("/szafa/add", methods=["POST"])
+def add_collection_game():
+    name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
+    notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
+    if name:
+        db = get_db()
+        db.execute(
+            "INSERT INTO collection_games (name, notes, owner_name) VALUES (?, ?, ?)",
+            (name, notes, current_name()),
+        )
+        db.commit()
+    return redirect(url_for("szafa_view"))
+
+
+@app.route("/szafa/<int:collection_game_id>/request", methods=["POST"])
+def toggle_collection_request(collection_game_id):
+    db = get_db()
+    name = current_name()
+    existing = query_one(
+        db,
+        "SELECT 1 FROM collection_requests WHERE user_name = ? AND collection_game_id = ?",
+        (name, collection_game_id),
+    )
+    if existing:
+        db.execute(
+            "DELETE FROM collection_requests WHERE user_name = ? AND collection_game_id = ?",
+            (name, collection_game_id),
+        )
+    else:
+        db.execute(
+            "INSERT INTO collection_requests (user_name, collection_game_id) VALUES (?, ?)",
+            (name, collection_game_id),
+        )
+    db.commit()
+    return redirect(url_for("szafa_view"))
+
+
+@app.route("/szafa/<int:collection_game_id>/delete", methods=["POST"])
+def delete_collection_game(collection_game_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM collection_games WHERE id = ? AND owner_name = ?",
+        (collection_game_id, current_name()),
+    )
+    db.commit()
+    return redirect(url_for("szafa_view"))
 
 
 init_db()
