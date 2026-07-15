@@ -99,10 +99,17 @@ main {
 
 .quick-add-item summary {
     cursor: pointer;
-    padding: 0.75rem 0.25rem;
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
     font-weight: 600;
-    color: var(--accent);
+    color: white;
+    background: var(--accent);
+    border-radius: 8px;
     list-style: none;
+}
+
+.quick-add-item summary:hover {
+    background: var(--accent-dark);
 }
 
 .quick-add-item summary::-webkit-details-marker { display: none; }
