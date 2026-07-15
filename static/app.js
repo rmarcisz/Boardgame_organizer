@@ -40,20 +40,35 @@ document.addEventListener("submit", function (event) {
 
                 current.replaceWith(updated);
             });
+            updateCommentsLayout();
         })
         .catch(function () {
             form.submit(); // fall back to a normal submit if the fetch failed
         });
 });
 
+// While a game's comment thread is open, expand the games column to full
+// width and hide the wishlist column (and vice versa for a wish's thread).
+function updateCommentsLayout() {
+    var gameOpen = document.querySelector("#games-section details.comments[open]") !== null;
+    var wishOpen = document.querySelector("#wishes-section details.comments[open]") !== null;
+    document.querySelectorAll(".games-wishes-row").forEach(function (el) {
+        el.classList.toggle("comments-open-games", gameOpen);
+        el.classList.toggle("comments-open-wishes", !gameOpen && wishOpen);
+    });
+}
+
 // Marks a game's comments as seen (clearing the "unread" highlight) the
 // moment its comment thread is opened. "toggle" doesn't bubble, so this
 // listener is registered on the capture phase instead.
 document.addEventListener("toggle", function (event) {
     var el = event.target;
-    if (!el.matches || !el.matches("details.comments") || !el.open) return;
+    if (!el.matches || !el.matches("details.comments")) return;
 
-    var gameId = el.dataset.id.replace("comments-", "");
+    updateCommentsLayout();
+    if (!el.open || el.dataset.id.indexOf("comments-game-") !== 0) return;
+
+    var gameId = el.dataset.id.replace("comments-game-", "");
     fetch("/games/" + gameId + "/comments/seen", {
         method: "POST",
         credentials: "same-origin",

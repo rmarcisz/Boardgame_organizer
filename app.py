@@ -311,6 +311,10 @@ def games_view():
     for row in query_all(db, "SELECT * FROM comments ORDER BY created_at"):
         comments_by_game.setdefault(row["game_id"], []).append(row)
 
+    comments_by_wish = {}  # wish_id -> list of comment rows, chronological
+    for row in query_all(db, "SELECT * FROM wish_comments ORDER BY created_at"):
+        comments_by_wish.setdefault(row["wish_id"], []).append(row)
+
     player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
     unread_game_ids = (
         get_unread_game_ids(db, name) if track_unread_enabled(player) else set()
@@ -324,6 +328,7 @@ def games_view():
         interest_names=interest_names,
         my_interests=my_interests,
         comments_by_game=comments_by_game,
+        comments_by_wish=comments_by_wish,
         unread_game_ids=unread_game_ids,
     )
 
@@ -480,6 +485,19 @@ def mark_comments_seen(game_id):
     return ("", 204)
 
 
+@app.route("/wishes/<int:wish_id>/comments/add", methods=["POST"])
+def add_wish_comment(wish_id):
+    text = clamp(request.form.get("text", ""), COMMENT_MAX_LENGTH)
+    if text:
+        db = get_db()
+        db.execute(
+            "INSERT INTO wish_comments (wish_id, author_name, text) VALUES (?, ?, ?)",
+            (wish_id, current_name(), text),
+        )
+        db.commit()
+    return redirect(url_for("games_view"))
+
+
 @app.route("/wishes/add", methods=["POST"])
 def add_wish():
     name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
@@ -528,6 +546,19 @@ def bring_wish(wish_id):
                 "INSERT INTO interests (user_name, game_id) VALUES (?, ?)",
                 (requester, game_id),
             )
+
+        # Carry the wishlist discussion over to the new game's comment thread.
+        same_name_ids = [row["id"] for row in same_name]
+        placeholders = ",".join("?" * len(same_name_ids))
+        db.execute(
+            "INSERT INTO comments (game_id, author_name, text, created_at) "
+            f"SELECT ?, author_name, text, created_at FROM wish_comments WHERE wish_id IN ({placeholders})",
+            [game_id] + same_name_ids,
+        )
+        db.execute(
+            f"DELETE FROM wish_comments WHERE wish_id IN ({placeholders})", same_name_ids
+        )
+
         db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
         db.commit()
     return redirect(url_for("games_view"))

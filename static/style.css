@@ -86,6 +86,16 @@ main {
 
 .two-col .panel { margin-bottom: 0; }
 
+.games-wishes-row.comments-open-games,
+.games-wishes-row.comments-open-wishes {
+    grid-template-columns: 1fr;
+}
+
+.games-wishes-row.comments-open-games .wishes-panel,
+.games-wishes-row.comments-open-wishes .games-panel {
+    display: none;
+}
+
 .quick-add {
     margin-bottom: 1.5rem;
 }
