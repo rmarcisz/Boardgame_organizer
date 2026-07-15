@@ -299,7 +299,12 @@ button:hover { background: var(--accent-dark); }
 .inline-form { display: inline; }
 
 .comments {
-    margin-top: 0.25rem;
+    margin-left: auto;
+}
+
+.comments[open] {
+    flex-basis: 100%;
+    margin-left: 0;
 }
 
 .comment-toggle {
