@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sqlite3
 from pathlib import Path
@@ -18,6 +19,25 @@ app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  # 64KB - plenty for these small te
 NAME_MAX_LENGTH = 50
 GAME_NAME_MAX_LENGTH = 100
 NOTES_MAX_LENGTH = 300
+
+NAME_COLORS = [
+    "#c1552c",  # orange
+    "#2f6f4e",  # green
+    "#2f5d8c",  # blue
+    "#8c3f8c",  # purple
+    "#8c630f",  # gold
+    "#3f7a7a",  # teal
+    "#a13d5c",  # rose
+    "#4f5f80",  # slate
+    "#6b7a2f",  # olive
+    "#7a4a2f",  # brown
+    "#267a5f",  # jade
+    "#8c2f4a",  # crimson
+    "#324a8c",  # navy
+    "#6b3f8c",  # violet
+    "#8c6318",  # amber
+    "#2f7a8c",  # cyan
+]
 
 
 def clamp(text, max_length):
@@ -89,6 +109,32 @@ def query_one(db, sql, params=()):
     return rows[0] if rows else None
 
 
+def record_player(db, name):
+    """Register a name's first appearance so it gets a stable color assignment."""
+    db.execute("INSERT OR IGNORE INTO players (name) VALUES (?)", (name,))
+    db.commit()
+
+
+def get_player_color_map(db):
+    if "player_colors" not in g:
+        rows = query_all(db, "SELECT name FROM players ORDER BY id")
+        g.player_colors = {row["name"]: NAME_COLORS[i % len(NAME_COLORS)] for i, row in enumerate(rows)}
+    return g.player_colors
+
+
+@app.template_filter("name_color")
+def name_color(name):
+    """Colors are assigned by order of first appearance, so a small group gets
+    all-distinct colors instead of risking hash collisions."""
+    colors = get_player_color_map(get_db())
+    if name in colors:
+        return colors[name]
+    # Not registered yet (shouldn't normally happen) - fall back to a hash so it
+    # still gets *some* color for this render.
+    digest = hashlib.md5(name.strip().lower().encode()).hexdigest()
+    return NAME_COLORS[int(digest, 16) % len(NAME_COLORS)]
+
+
 def group_wishes(rows):
     """Merge wish rows that share a name into one card with a list of requesters."""
     groups = {}
@@ -134,6 +180,21 @@ def init_db():
         except Exception:
             pass  # column already exists
     db.commit()
+    # Backfill players from names already present in existing trip data, ordered
+    # by earliest activity, so they keep stable, distinct colors.
+    existing = {row["name"] for row in query_all(db, "SELECT name FROM players")}
+    rows = query_all(
+        db,
+        "SELECT owner_name AS name, created_at FROM games "
+        "UNION ALL "
+        "SELECT requester_name AS name, created_at FROM wishes "
+        "ORDER BY created_at",
+    )
+    for row in rows:
+        if row["name"] not in existing:
+            db.execute("INSERT OR IGNORE INTO players (name) VALUES (?)", (row["name"],))
+            existing.add(row["name"])
+    db.commit()
     db.close()
 
 
@@ -155,6 +216,7 @@ def login():
         name = clamp(request.form.get("name", ""), NAME_MAX_LENGTH)
         if not name:
             return render_template("login.html", error="Wpisz imię.")
+        record_player(get_db(), name)
         session["name"] = name
         return redirect(url_for("games_view"))
     return render_template("login.html")
@@ -201,15 +263,16 @@ def games_view():
 def account_view():
     name = current_name()
     error = None
+    db = get_db()
     if request.method == "POST":
         new_name = clamp(request.form.get("name", ""), NAME_MAX_LENGTH)
         if not new_name:
             error = "Wpisz imię."
         else:
+            record_player(db, new_name)
             session["name"] = new_name
             name = new_name
 
-    db = get_db()
     my_games = query_all(
         db, "SELECT * FROM games WHERE owner_name = ? ORDER BY created_at DESC", (name,)
     )

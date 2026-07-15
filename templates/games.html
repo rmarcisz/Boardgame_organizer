@@ -35,12 +35,18 @@
             <details class="card" data-id="{{ game['id'] }}">
                 <summary>
                     <span class="card-name">{{ game['name'] }}</span>
-                    <span class="tag {{ 'mine' if user in game['owners'] else '' }}">{{ game['owners'][0] }}{% if game['owners']|length > 1 %} +{{ game['owners']|length - 1 }}{% endif %}</span>
+                    <span class="tag {{ 'mine' if user in game['owners'] else '' }}" style="background-color: {{ game['owners'][0] | name_color }};">{{ game['owners'][0] }}{% if game['owners']|length > 1 %} +{{ game['owners']|length - 1 }}{% endif %}</span>
                 </summary>
                 <div class="card-body">
                     {% if game['image_url'] %}<img class="card-thumb" src="{{ game['image_url'] }}" alt="">{% endif %}
                     {% if game['notes'] %}<p class="notes">{{ game['notes'] }}</p>{% endif %}
-                    {% if game['owners']|length > 1 %}<p class="owner">Zabierają: {{ game['owners'] | join(', ') }}</p>{% endif %}
+                    {% if game['owners']|length > 1 %}
+                    <p class="owner">Zabierają:
+                        {% for owner in game['owners'] %}
+                        <span class="tag" style="background-color: {{ owner | name_color }};">{{ owner }}</span>
+                        {% endfor %}
+                    </p>
+                    {% endif %}
 
                     {% set interested = interest_names.get(game['id'], []) %}
                     <div class="card-actions">
@@ -51,7 +57,7 @@
                         {% endif %}
                         {% if interested %}
                             {% for person in interested %}
-                            <span class="tag">{{ person }}</span>
+                            <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
                             {% endfor %}
                         {% else %}
                             <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
@@ -78,12 +84,16 @@
             <details class="card wish" data-id="{{ wish['id'] }}">
                 <summary>
                     <span class="card-name">{{ wish['name'] }}</span>
-                    <span class="tag {{ 'mine' if user in requesters else '' }}">{{ requesters[0] }}{% if requesters|length > 1 %} +{{ requesters|length - 1 }}{% endif %}</span>
+                    <span class="tag {{ 'mine' if user in requesters else '' }}" style="background-color: {{ requesters[0] | name_color }};">{{ requesters[0] }}{% if requesters|length > 1 %} +{{ requesters|length - 1 }}{% endif %}</span>
                 </summary>
                 <div class="card-body">
                     {% if wish['image_url'] %}<img class="card-thumb" src="{{ wish['image_url'] }}" alt="">{% endif %}
                     {% if wish['notes'] %}<p class="notes">{{ wish['notes'] }}</p>{% endif %}
-                    <p class="interested">Chcą: {{ requesters | join(', ') }}</p>
+                    <p class="interested">Chcą:
+                        {% for r in requesters %}
+                        <span class="tag" style="background-color: {{ r | name_color }};">{{ r }}</span>
+                        {% endfor %}
+                    </p>
 
                     {% if user not in requesters %}
                     <div class="card-actions">

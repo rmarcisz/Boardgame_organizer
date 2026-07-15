@@ -283,6 +283,11 @@ button:hover { background: var(--accent-dark); }
     color: white;
 }
 
+.owner .tag,
+.interested .tag {
+    margin-left: 0.35rem;
+}
+
 .owner { margin: 0; font-size: 0.85rem; color: var(--muted); }
 
 .origin-note { font-size: 0.8rem; font-style: italic; margin: 0; }
