@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Planszówki na wyjazd{% endblock %}</title>
+    <title>{% block title %}Zgrani 2026 - planszówkowy organizer{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
 <body>
     <header class="topbar">
-        <h1>🎲 Planszówki na wyjazd</h1>
+        <h1>🎲 Zgrani 2026 - planszówkowy organizer</h1>
         {% if user %}
         <div class="whoami">
             Zalogowano jako <strong>{{ user }}</strong>
