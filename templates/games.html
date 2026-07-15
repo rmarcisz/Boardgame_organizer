@@ -48,13 +48,13 @@
                         <button type="submit" class="star-btn {{ 'active' if game['id'] in my_interests else '' }}" title="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}" aria-label="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}">{{ '★' if game['id'] in my_interests else '☆' }}</button>
                     </form>
                     {% endif %}
-                    <span class="interested">
-                        {% if interested %}
-                            Zainteresowani: {{ interested | join(', ') }}
-                        {% else %}
-                            <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
-                        {% endif %}
-                    </span>
+                    {% if interested %}
+                        {% for person in interested %}
+                        <span class="tag">{{ person }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
+                    {% endif %}
                 </div>
             </div>
         </details>

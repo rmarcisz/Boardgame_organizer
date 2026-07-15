@@ -30,6 +30,7 @@ class _TursoCursor:
     def __init__(self, result_set):
         self._rows = [tuple(row) for row in result_set.rows]
         self.description = [(c,) for c in result_set.columns] if result_set.columns else None
+        self.lastrowid = result_set.last_insert_rowid
 
     def fetchall(self):
         return self._rows
@@ -314,11 +315,19 @@ def bring_wish(wish_id):
         same_name = query_all(
             db, "SELECT * FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],)
         )
-        requesters = ",".join(row["requester_name"] for row in same_name)
-        db.execute(
+        requester_names = [row["requester_name"] for row in same_name]
+        requesters = ",".join(requester_names)
+        cur = db.execute(
             "INSERT INTO games (name, notes, owner_name, image_url, origin_wish_requester) VALUES (?, ?, ?, ?, ?)",
             (wish["name"], wish["notes"], current_name(), wish["image_url"], requesters),
         )
+        game_id = cur.lastrowid
+        # The original wishers are automatically interested in the game that fulfills their wish.
+        for requester in set(requester_names) - {current_name()}:
+            db.execute(
+                "INSERT INTO interests (user_name, game_id) VALUES (?, ?)",
+                (requester, game_id),
+            )
         db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
         db.commit()
     return redirect(url_for("games_view"))
