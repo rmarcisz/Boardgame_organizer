@@ -5,15 +5,6 @@
 <section class="panel account-panel">
     <h2>Konto</h2>
     <p class="muted">Obecne imię: <strong>{{ user }}</strong></p>
-    <p class="muted">Uwaga: zmiana imienia to jak zalogowanie się jako zupełnie inna osoba – Twoje dotychczasowe gry i życzenia zostaną przy starym imieniu.</p>
-
-    {% if error %}<p class="error">{{ error }}</p>{% endif %}
-
-    <form method="post" class="account-form">
-        <label for="name">Zmień imię</label>
-        <input type="text" id="name" name="name" value="{{ user }}" maxlength="50" required>
-        <button type="submit">Zapisz</button>
-    </form>
 
     <p class="muted">Twój kolor na etykietach:</p>
     <form method="post" action="{{ url_for('set_color') }}" class="color-grid">

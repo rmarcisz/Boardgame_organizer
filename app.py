@@ -277,22 +277,10 @@ def games_view():
     )
 
 
-@app.route("/konto", methods=["GET", "POST"])
+@app.route("/konto")
 def account_view():
     name = current_name()
-    error = None
     db = get_db()
-    if request.method == "POST":
-        new_name = clamp(request.form.get("name", ""), NAME_MAX_LENGTH)
-        existing = query_one(db, "SELECT * FROM players WHERE name = ?", (new_name,))
-        if not new_name:
-            error = "Wpisz imię."
-        elif new_name != name and existing and existing["pin_code"]:
-            error = "To imię jest zablokowane kodem - zaloguj się nim przez stronę logowania."
-        else:
-            record_player(db, new_name)
-            session["name"] = new_name
-            name = new_name
 
     my_games = query_all(
         db, "SELECT * FROM games WHERE owner_name = ? ORDER BY name COLLATE NOCASE", (name,)
@@ -305,7 +293,6 @@ def account_view():
     return render_template(
         "account.html",
         user=name,
-        error=error,
         my_games=my_games,
         my_wishes=my_wishes,
         player=player,
