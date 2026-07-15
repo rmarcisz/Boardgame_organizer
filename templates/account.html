@@ -14,20 +14,14 @@
         <input type="text" id="name" name="name" value="{{ user }}" maxlength="50" required>
         <button type="submit">Zapisz</button>
     </form>
-</section>
 
-<section class="panel account-panel">
-    <h2>Kolor</h2>
     <p class="muted">Twój kolor na etykietach:</p>
     <form method="post" action="{{ url_for('set_color') }}" class="color-grid">
         {% for c in name_colors %}
         <button type="submit" name="color" value="{{ c }}" class="color-swatch {{ 'selected' if c == current_color else '' }}" style="background-color: {{ c }};" aria-label="Wybierz kolor {{ c }}" title="{{ c }}"></button>
         {% endfor %}
     </form>
-</section>
 
-<section class="panel account-panel">
-    <h2>Blokada konta</h2>
     {% if player and player['pin_code'] %}
     <p class="muted">To imię jest zablokowane kodem - dalsze logowania na nie wymagają podania 4-cyfrowego kodu.</p>
     <form method="post" action="{{ url_for('unlock_account') }}" class="inline-form">
@@ -43,63 +37,46 @@
     {% endif %}
 </section>
 
-<div class="two-col">
-<section class="panel">
+<section class="panel account-panel">
     <h2>Gry, które zabierasz</h2>
 
     {% if not my_games %}
     <p class="muted">Nie dodałeś/aś jeszcze żadnej gry.</p>
-    {% endif %}
-
-    <div class="card-grid">
+    {% else %}
+    <ul class="text-list">
         {% for game in my_games %}
-        <div class="card">
-            {% if game['image_url'] %}<img class="card-thumb" src="{{ game['image_url'] }}" alt="">{% endif %}
-            <div class="card-header">
-                <h3>{{ game['name'] }}</h3>
-            </div>
-            {% if game['notes'] %}<p class="notes">{{ game['notes'] }}</p>{% endif %}
-            {% if game['origin_wish_requester'] %}
-            <p class="muted origin-note">Ktoś to chciał na liście życzeń – rezygnacja wróci grę na listę.</p>
-            {% endif %}
-            <div class="card-actions">
-                <form method="post" action="{{ url_for('delete_game', game_id=game['id']) }}" class="inline-form">
-                    {% if game['origin_wish_requester'] %}
-                    <button type="submit" class="link-btn danger">Rezygnuję (wróć do listy życzeń)</button>
-                    {% else %}
-                    <button type="submit" class="link-btn danger">Usuń</button>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
+        <li>
+            <span>{{ game['name'] }}{% if game['notes'] %} <span class="muted">– {{ game['notes'] }}</span>{% endif %}</span>
+            <form method="post" action="{{ url_for('delete_game', game_id=game['id']) }}" class="inline-form">
+                {% if game['origin_wish_requester'] %}
+                <button type="submit" class="link-btn danger">Rezygnuję</button>
+                {% else %}
+                <button type="submit" class="link-btn danger">Usuń</button>
+                {% endif %}
+            </form>
+        </li>
         {% endfor %}
-    </div>
+    </ul>
+    {% endif %}
 </section>
 
-<section class="panel">
+<section class="panel account-panel">
     <h2>Gry, których chcesz</h2>
 
     {% if not my_wishes %}
     <p class="muted">Nie dodałeś/aś jeszcze żadnego życzenia.</p>
-    {% endif %}
-
-    <div class="card-grid">
+    {% else %}
+    <ul class="text-list">
         {% for wish in my_wishes %}
-        <div class="card wish">
-            {% if wish['image_url'] %}<img class="card-thumb" src="{{ wish['image_url'] }}" alt="">{% endif %}
-            <div class="card-header">
-                <h3>{{ wish['name'] }}</h3>
-            </div>
-            {% if wish['notes'] %}<p class="notes">{{ wish['notes'] }}</p>{% endif %}
-            <div class="card-actions">
-                <form method="post" action="{{ url_for('delete_wish', wish_id=wish['id']) }}" class="inline-form">
-                    <button type="submit" class="link-btn danger">Usuń</button>
-                </form>
-            </div>
-        </div>
+        <li>
+            <span>{{ wish['name'] }}{% if wish['notes'] %} <span class="muted">– {{ wish['notes'] }}</span>{% endif %}</span>
+            <form method="post" action="{{ url_for('delete_wish', wish_id=wish['id']) }}" class="inline-form">
+                <button type="submit" class="link-btn danger">Usuń</button>
+            </form>
+        </li>
         {% endfor %}
-    </div>
+    </ul>
+    {% endif %}
 </section>
-</div>
 
 {% endblock %}

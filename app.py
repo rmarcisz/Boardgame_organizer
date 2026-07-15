@@ -256,7 +256,7 @@ def games_view():
     db = get_db()
     name = current_name()
 
-    games = group_games(query_all(db, "SELECT * FROM games ORDER BY created_at DESC"))
+    games = group_games(query_all(db, "SELECT * FROM games ORDER BY name COLLATE NOCASE"))
 
     interest_names = {}  # game_id -> list of names
     my_interests = set()
@@ -265,7 +265,7 @@ def games_view():
         if row["user_name"] == name:
             my_interests.add(row["game_id"])
 
-    wishes = group_wishes(query_all(db, "SELECT * FROM wishes ORDER BY created_at DESC"))
+    wishes = group_wishes(query_all(db, "SELECT * FROM wishes ORDER BY name COLLATE NOCASE"))
 
     return render_template(
         "games.html",
@@ -295,10 +295,10 @@ def account_view():
             name = new_name
 
     my_games = query_all(
-        db, "SELECT * FROM games WHERE owner_name = ? ORDER BY created_at DESC", (name,)
+        db, "SELECT * FROM games WHERE owner_name = ? ORDER BY name COLLATE NOCASE", (name,)
     )
     my_wishes = query_all(
-        db, "SELECT * FROM wishes WHERE requester_name = ? ORDER BY created_at DESC", (name,)
+        db, "SELECT * FROM wishes WHERE requester_name = ? ORDER BY name COLLATE NOCASE", (name,)
     )
     player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
 
