@@ -53,26 +53,48 @@ document.addEventListener("submit", function (event) {
         });
 });
 
+// A comments thread only really counts as "open" if it (and every ancestor
+// <details>, e.g. the card it lives in) is actually open - collapsing the
+// outer card leaves the nested comments' [open] attribute untouched even
+// though it's no longer visible.
+function isVisiblyOpen(el) {
+    while (el) {
+        if (el.tagName === "DETAILS" && !el.open) return false;
+        el = el.parentElement;
+    }
+    return true;
+}
+
 // While a game's comment thread is open, expand the games column to full
 // width and hide the wishlist column (and vice versa for a wish's thread).
 function updateCommentsLayout() {
-    var gameOpen = document.querySelector("#games-section details.comments[open]") !== null;
-    var wishOpen = document.querySelector("#wishes-section details.comments[open]") !== null;
+    var gameOpen = Array.prototype.some.call(
+        document.querySelectorAll("#games-section details.comments[open]"),
+        isVisiblyOpen
+    );
+    var wishOpen = Array.prototype.some.call(
+        document.querySelectorAll("#wishes-section details.comments[open]"),
+        isVisiblyOpen
+    );
     document.querySelectorAll(".games-wishes-row").forEach(function (el) {
         el.classList.toggle("comments-open-games", gameOpen);
         el.classList.toggle("comments-open-wishes", !gameOpen && wishOpen);
     });
 }
 
-// Marks a game's comments as seen (clearing the "unread" highlight) the
-// moment its comment thread is opened. "toggle" doesn't bubble, so this
-// listener is registered on the capture phase instead.
+// Recheck the layout whenever any <details> toggles - not just the comments
+// thread itself, but also the card (or quick-add panel, etc.) it's nested
+// in, since collapsing an ancestor can hide a thread without touching its
+// own [open] attribute. "toggle" doesn't bubble, so this listener is
+// registered on the capture phase instead.
 document.addEventListener("toggle", function (event) {
     var el = event.target;
-    if (!el.matches || !el.matches("details.comments")) return;
+    if (!el.matches || !el.matches("details")) return;
 
     updateCommentsLayout();
-    if (!el.open || el.dataset.id.indexOf("comments-game-") !== 0) return;
+    if (!el.matches("details.comments") || !el.open || el.dataset.id.indexOf("comments-game-") !== 0) {
+        return;
+    }
 
     var gameId = el.dataset.id.replace("comments-game-", "");
     fetch("/games/" + gameId + "/comments/seen", {
