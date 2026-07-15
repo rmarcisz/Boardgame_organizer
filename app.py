@@ -662,7 +662,7 @@ def szafa_view():
     db = get_db()
     name = current_name()
 
-    collection = sort_by_name(query_all(db, "SELECT * FROM collection_games"))
+    all_games = query_all(db, "SELECT * FROM collection_games")
 
     requests_by_game = {}
     my_requests = set()
@@ -671,12 +671,26 @@ def szafa_view():
         if row["user_name"] == name:
             my_requests.add(row["collection_game_id"])
 
+    # Your own games: most-wanted first, then alphabetically.
+    my_collection = [g for g in all_games if g["owner_name"] == name]
+    my_collection.sort(
+        key=lambda g: (-len(requests_by_game.get(g["id"], [])), polish_sort_key(g["name"]))
+    )
+
+    others_collection = sort_by_name([g for g in all_games if g["owner_name"] != name])
+
+    comments_by_collection = {}
+    for row in query_all(db, "SELECT * FROM collection_comments ORDER BY created_at"):
+        comments_by_collection.setdefault(row["collection_game_id"], []).append(row)
+
     return render_template(
         "szafa.html",
         user=name,
-        collection=collection,
+        my_collection=my_collection,
+        others_collection=others_collection,
         requests_by_game=requests_by_game,
         my_requests=my_requests,
+        comments_by_collection=comments_by_collection,
     )
 
 
@@ -725,6 +739,19 @@ def delete_collection_game(collection_game_id):
         (collection_game_id, current_name()),
     )
     db.commit()
+    return redirect(url_for("szafa_view"))
+
+
+@app.route("/szafa/<int:collection_game_id>/comments/add", methods=["POST"])
+def add_collection_comment(collection_game_id):
+    text = clamp(request.form.get("text", ""), COMMENT_MAX_LENGTH)
+    if text:
+        db = get_db()
+        db.execute(
+            "INSERT INTO collection_comments (collection_game_id, author_name, text) VALUES (?, ?, ?)",
+            (collection_game_id, current_name(), text),
+        )
+        db.commit()
     return redirect(url_for("szafa_view"))
 
 

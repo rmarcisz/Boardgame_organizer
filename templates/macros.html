@@ -1,0 +1,19 @@
+{% macro comment_thread(comments, data_id, add_action) %}
+<details class="comments" data-id="{{ data_id }}">
+    <summary class="comment-toggle">💬 {{ comments|length }}</summary>
+    <div class="comment-list">
+        {% for comment in comments %}
+        <p class="comment">
+            <span class="tag" style="background-color: {{ comment['author_name'] | name_color }};">{{ comment['author_name'] }}</span>
+            {{ comment['text'] }}
+        </p>
+        {% else %}
+        <p class="muted">Brak komentarzy.</p>
+        {% endfor %}
+        <form method="post" action="{{ add_action }}" class="inline-form ajax-form comment-form">
+            <input type="text" name="text" placeholder="Napisz komentarz…" maxlength="255" required>
+            <button type="submit">Dodaj</button>
+        </form>
+    </div>
+</details>
+{% endmacro %}

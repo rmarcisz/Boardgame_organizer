@@ -84,3 +84,11 @@ CREATE TABLE IF NOT EXISTS collection_requests (
     collection_game_id INTEGER NOT NULL REFERENCES collection_games(id) ON DELETE CASCADE,
     PRIMARY KEY (user_name, collection_game_id)
 );
+
+CREATE TABLE IF NOT EXISTS collection_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    collection_game_id INTEGER NOT NULL REFERENCES collection_games(id) ON DELETE CASCADE,
+    author_name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

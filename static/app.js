@@ -1,10 +1,16 @@
-// Intercepts .ajax-form submits (star toggle, "bring wish") so they update
-// the games/wishes lists in place instead of doing a full page navigation.
+// Intercepts .ajax-form submits (star toggle, "bring wish", comments, ...) so
+// they update the page's .ajax-region containers in place instead of doing a
+// full page navigation. Works on any page - regions are matched by id.
 document.addEventListener("submit", function (event) {
     var form = event.target;
     if (!form.classList.contains("ajax-form")) return;
 
     event.preventDefault();
+
+    var regionIds = Array.prototype.map.call(
+        document.querySelectorAll(".ajax-region[id]"),
+        function (el) { return el.id; }
+    );
 
     fetch(form.action, {
         method: "POST",
@@ -12,8 +18,8 @@ document.addEventListener("submit", function (event) {
         credentials: "same-origin",
     })
         .then(function (response) {
-            if (response.url.indexOf("/gry") === -1) {
-                // Session expired or redirected somewhere unexpected - do a real navigation.
+            if (response.url.indexOf("/login") !== -1) {
+                // Session expired - do a real navigation to show the login page.
                 window.location.href = response.url;
                 return null;
             }
@@ -23,7 +29,7 @@ document.addEventListener("submit", function (event) {
             if (html === null) return;
             var doc = new DOMParser().parseFromString(html, "text/html");
 
-            ["games-section", "wishes-section"].forEach(function (id) {
+            regionIds.forEach(function (id) {
                 var current = document.getElementById(id);
                 var updated = doc.getElementById(id);
                 if (!current || !updated) return;

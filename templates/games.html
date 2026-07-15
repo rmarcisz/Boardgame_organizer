@@ -1,26 +1,6 @@
 {% extends "base.html" %}
+{% import "macros.html" as macros %}
 {% block title %}Wszystkie gry – Zgrani 2026 - planszówkowy organizer{% endblock %}
-
-{% macro comment_thread(comments, data_id, add_action) %}
-<details class="comments" data-id="{{ data_id }}">
-    <summary class="comment-toggle">💬 {{ comments|length }}</summary>
-    <div class="comment-list">
-        {% for comment in comments %}
-        <p class="comment">
-            <span class="tag" style="background-color: {{ comment['author_name'] | name_color }};">{{ comment['author_name'] }}</span>
-            {{ comment['text'] }}
-        </p>
-        {% else %}
-        <p class="muted">Brak komentarzy.</p>
-        {% endfor %}
-        <form method="post" action="{{ add_action }}" class="inline-form ajax-form comment-form">
-            <input type="text" name="text" placeholder="Napisz komentarz…" maxlength="255" required>
-            <button type="submit">Dodaj</button>
-        </form>
-    </div>
-</details>
-{% endmacro %}
-
 {% block content %}
 
 <div class="quick-add two-col two-col-mobile">
@@ -46,7 +26,7 @@
 <section class="panel games-panel">
     <h2>Zabierane gry</h2>
 
-    <div id="games-section">
+    <div id="games-section" class="ajax-region">
         {% if not games %}
         <p class="muted">Nikt jeszcze nie dodał gry.</p>
         {% endif %}
@@ -84,7 +64,7 @@
                             <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
                         {% endif %}
 
-                        {{ comment_thread(comments_by_game.get(game['id'], []), 'comments-game-' ~ game['id'], url_for('add_comment', game_id=game['id'])) }}
+                        {{ macros.comment_thread(comments_by_game.get(game['id'], []), 'comments-game-' ~ game['id'], url_for('add_comment', game_id=game['id'])) }}
                     </div>
                 </div>
             </details>
@@ -96,7 +76,7 @@
 <section class="panel wishes-panel">
     <h2>Lista życzeń</h2>
 
-    <div id="wishes-section">
+    <div id="wishes-section" class="ajax-region">
         {% if not wishes %}
         <p class="muted">Lista życzeń jest jeszcze pusta.</p>
         {% endif %}
@@ -127,7 +107,7 @@
                             <button type="submit" class="btn-secondary">Też chcę!</button>
                         </form>
                         {% endif %}
-                        {{ comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id'])) }}
+                        {{ macros.comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id'])) }}
                     </div>
                 </div>
             </details>
