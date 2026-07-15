@@ -2,12 +2,23 @@
 {% block title %}Logowanie – Planszówki na wyjazd{% endblock %}
 {% block content %}
 <div class="login-card">
+    {% if need_code %}
+    <h2>Konto zablokowane</h2>
+    <p class="muted">Imię <strong>{{ name }}</strong> jest zablokowane kodem. Podaj 4-cyfrowy kod, aby się zalogować.</p>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <form method="post">
+        <input type="hidden" name="name" value="{{ name }}">
+        <input type="text" name="code" placeholder="Kod (4 cyfry)" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autofocus required>
+        <button type="submit">Zaloguj</button>
+    </form>
+    {% else %}
     <h2>Kto tu jest?</h2>
     <p class="muted">Wpisz swoje imię, aby dołączyć. Za pierwszym razem utworzy nowy profil; to samo imię zaloguje Cię ponownie.</p>
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     <form method="post">
-        <input type="text" name="name" placeholder="Twoje imię" maxlength="50" autofocus required>
+        <input type="text" name="name" value="{{ name or '' }}" placeholder="Twoje imię" maxlength="50" autofocus required>
         <button type="submit">Dalej</button>
     </form>
+    {% endif %}
 </div>
 {% endblock %}

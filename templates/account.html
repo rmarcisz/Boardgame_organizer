@@ -16,6 +16,33 @@
     </form>
 </section>
 
+<section class="panel account-panel">
+    <h2>Kolor</h2>
+    <p class="muted">Twój kolor na etykietach:</p>
+    <form method="post" action="{{ url_for('set_color') }}" class="color-grid">
+        {% for c in name_colors %}
+        <button type="submit" name="color" value="{{ c }}" class="color-swatch {{ 'selected' if c == current_color else '' }}" style="background-color: {{ c }};" aria-label="Wybierz kolor {{ c }}" title="{{ c }}"></button>
+        {% endfor %}
+    </form>
+</section>
+
+<section class="panel account-panel">
+    <h2>Blokada konta</h2>
+    {% if player and player['pin_code'] %}
+    <p class="muted">To imię jest zablokowane kodem - dalsze logowania na nie wymagają podania 4-cyfrowego kodu.</p>
+    <form method="post" action="{{ url_for('unlock_account') }}" class="inline-form">
+        <button type="submit" class="link-btn danger">Usuń blokadę</button>
+    </form>
+    {% else %}
+    <p class="muted">Zablokuj to imię 4-cyfrowym kodem, żeby nikt inny nie mógł się na nie zalogować.</p>
+    <form method="post" action="{{ url_for('set_lock') }}" class="account-form">
+        <label for="code">Kod (4 cyfry)</label>
+        <input type="text" id="code" name="code" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
+        <button type="submit">Zablokuj konto</button>
+    </form>
+    {% endif %}
+</section>
+
 <div class="two-col">
 <section class="panel">
     <h2>Gry, które zabierasz</h2>

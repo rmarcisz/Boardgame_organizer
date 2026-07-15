@@ -333,7 +333,29 @@ button:hover { background: var(--accent-dark); }
 
 .error { color: var(--danger); }
 
+.flashes { list-style: none; padding: 0; margin: 0 0 1rem; }
+
 .account-panel { max-width: 420px; }
+
+.color-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.color-swatch {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.color-swatch.selected {
+    border-color: var(--ink);
+}
 
 .account-form {
     display: flex;

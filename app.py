@@ -3,7 +3,8 @@ import os
 import sqlite3
 from pathlib import Path
 
-from flask import Flask, g, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).parent
 DB_PATH = BASE_DIR / "boardgames.db"
@@ -117,8 +118,11 @@ def record_player(db, name):
 
 def get_player_color_map(db):
     if "player_colors" not in g:
-        rows = query_all(db, "SELECT name FROM players ORDER BY id")
-        g.player_colors = {row["name"]: NAME_COLORS[i % len(NAME_COLORS)] for i, row in enumerate(rows)}
+        rows = query_all(db, "SELECT name, color FROM players ORDER BY id")
+        g.player_colors = {
+            row["name"]: row["color"] or NAME_COLORS[i % len(NAME_COLORS)]
+            for i, row in enumerate(rows)
+        }
     return g.player_colors
 
 
@@ -174,6 +178,8 @@ def init_db():
         ("games", "image_url", "TEXT"),
         ("wishes", "image_url", "TEXT"),
         ("games", "origin_wish_requester", "TEXT"),
+        ("players", "color", "TEXT"),
+        ("players", "pin_code", "TEXT"),
     ]:
         try:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
@@ -214,9 +220,21 @@ def require_login():
 def login():
     if request.method == "POST":
         name = clamp(request.form.get("name", ""), NAME_MAX_LENGTH)
+        code = request.form.get("code", "").strip()
         if not name:
             return render_template("login.html", error="Wpisz imię.")
-        record_player(get_db(), name)
+
+        db = get_db()
+        player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
+        if player and player["pin_code"]:
+            if not code:
+                return render_template("login.html", name=name, need_code=True)
+            if not check_password_hash(player["pin_code"], code):
+                return render_template(
+                    "login.html", name=name, need_code=True, error="Nieprawidłowy kod."
+                )
+
+        record_player(db, name)
         session["name"] = name
         return redirect(url_for("games_view"))
     return render_template("login.html")
@@ -266,8 +284,11 @@ def account_view():
     db = get_db()
     if request.method == "POST":
         new_name = clamp(request.form.get("name", ""), NAME_MAX_LENGTH)
+        existing = query_one(db, "SELECT * FROM players WHERE name = ?", (new_name,))
         if not new_name:
             error = "Wpisz imię."
+        elif new_name != name and existing and existing["pin_code"]:
+            error = "To imię jest zablokowane kodem - zaloguj się nim przez stronę logowania."
         else:
             record_player(db, new_name)
             session["name"] = new_name
@@ -279,6 +300,7 @@ def account_view():
     my_wishes = query_all(
         db, "SELECT * FROM wishes WHERE requester_name = ? ORDER BY created_at DESC", (name,)
     )
+    player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
 
     return render_template(
         "account.html",
@@ -286,7 +308,45 @@ def account_view():
         error=error,
         my_games=my_games,
         my_wishes=my_wishes,
+        player=player,
+        current_color=name_color(name),
+        name_colors=NAME_COLORS,
     )
+
+
+@app.route("/konto/color", methods=["POST"])
+def set_color():
+    color = request.form.get("color", "")
+    if color in NAME_COLORS:
+        db = get_db()
+        db.execute(
+            "UPDATE players SET color = ? WHERE name = ?", (color, current_name())
+        )
+        db.commit()
+    return redirect(url_for("account_view"))
+
+
+@app.route("/konto/lock", methods=["POST"])
+def set_lock():
+    code = request.form.get("code", "").strip()
+    if not (code.isdigit() and len(code) == 4):
+        flash("Kod musi mieć dokładnie 4 cyfry.")
+    else:
+        db = get_db()
+        db.execute(
+            "UPDATE players SET pin_code = ? WHERE name = ?",
+            (generate_password_hash(code), current_name()),
+        )
+        db.commit()
+    return redirect(url_for("account_view"))
+
+
+@app.route("/konto/unlock", methods=["POST"])
+def unlock_account():
+    db = get_db()
+    db.execute("UPDATE players SET pin_code = NULL WHERE name = ?", (current_name(),))
+    db.commit()
+    return redirect(url_for("account_view"))
 
 
 @app.route("/games/add", methods=["POST"])
