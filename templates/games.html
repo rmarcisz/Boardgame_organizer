@@ -32,7 +32,7 @@
 
         <div class="card-grid">
             {% for game in games %}
-            <details class="card" data-id="{{ game['id'] }}">
+            <details class="card {{ 'unread' if game['id'] in unread_game_ids else '' }}" data-id="{{ game['id'] }}">
                 <summary>
                     <span class="card-name">{{ game['name'] }}</span>
                     <span class="tag {{ 'mine' if user in game['owners'] else '' }}" style="background-color: {{ game['owners'][0] | name_color }};">{{ game['owners'][0] }}{% if game['owners']|length > 1 %} +{{ game['owners']|length - 1 }}{% endif %}</span>
@@ -63,6 +63,25 @@
                             <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
                         {% endif %}
                     </div>
+
+                    {% set comments = comments_by_game.get(game['id'], []) %}
+                    <details class="comments" data-id="comments-{{ game['id'] }}">
+                        <summary class="comment-toggle">💬 {{ comments|length }}</summary>
+                        <div class="comment-list">
+                            {% for comment in comments %}
+                            <p class="comment">
+                                <span class="tag" style="background-color: {{ comment['author_name'] | name_color }};">{{ comment['author_name'] }}</span>
+                                {{ comment['text'] }}
+                            </p>
+                            {% else %}
+                            <p class="muted">Brak komentarzy.</p>
+                            {% endfor %}
+                            <form method="post" action="{{ url_for('add_comment', game_id=game['id']) }}" class="inline-form ajax-form comment-form">
+                                <input type="text" name="text" placeholder="Napisz komentarz…" maxlength="255" required>
+                                <button type="submit">Dodaj</button>
+                            </form>
+                        </div>
+                    </details>
                 </div>
             </details>
             {% endfor %}

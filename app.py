@@ -20,6 +20,7 @@ app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  # 64KB - plenty for these small te
 NAME_MAX_LENGTH = 50
 GAME_NAME_MAX_LENGTH = 100
 NOTES_MAX_LENGTH = 300
+COMMENT_MAX_LENGTH = 255
 
 NAME_COLORS = [
     "#c1552c",  # orange
@@ -139,6 +140,31 @@ def name_color(name):
     return NAME_COLORS[int(digest, 16) % len(NAME_COLORS)]
 
 
+def track_unread_enabled(player):
+    return not player or player["track_unread"] != 0
+
+
+def get_unread_game_ids(db, user_name):
+    """Game ids with a comment posted after the user's last visit to that thread."""
+    latest = {
+        row["game_id"]: row["latest"]
+        for row in query_all(
+            db, "SELECT game_id, MAX(created_at) AS latest FROM comments GROUP BY game_id"
+        )
+    }
+    seen = {
+        row["game_id"]: row["last_seen_at"]
+        for row in query_all(
+            db, "SELECT game_id, last_seen_at FROM comment_reads WHERE user_name = ?", (user_name,)
+        )
+    }
+    return {
+        game_id
+        for game_id, latest_at in latest.items()
+        if game_id not in seen or latest_at > seen[game_id]
+    }
+
+
 POLISH_ALPHABET = "aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźż"
 POLISH_ORDER = {ch: i for i, ch in enumerate(POLISH_ALPHABET)}
 
@@ -193,6 +219,7 @@ def init_db():
         ("games", "origin_wish_requester", "TEXT"),
         ("players", "color", "TEXT"),
         ("players", "pin_code", "TEXT"),
+        ("players", "track_unread", "INTEGER DEFAULT 1"),
     ]:
         try:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
@@ -280,6 +307,15 @@ def games_view():
 
     wishes = group_wishes(sort_by_name(query_all(db, "SELECT * FROM wishes")))
 
+    comments_by_game = {}  # game_id -> list of comment rows, chronological
+    for row in query_all(db, "SELECT * FROM comments ORDER BY created_at"):
+        comments_by_game.setdefault(row["game_id"], []).append(row)
+
+    player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
+    unread_game_ids = (
+        get_unread_game_ids(db, name) if track_unread_enabled(player) else set()
+    )
+
     return render_template(
         "games.html",
         user=name,
@@ -287,6 +323,8 @@ def games_view():
         wishes=wishes,
         interest_names=interest_names,
         my_interests=my_interests,
+        comments_by_game=comments_by_game,
+        unread_game_ids=unread_game_ids,
     )
 
 
@@ -311,6 +349,7 @@ def account_view():
         player=player,
         current_color=name_color(name),
         name_colors=NAME_COLORS,
+        track_unread=track_unread_enabled(player),
     )
 
 
@@ -345,6 +384,18 @@ def set_lock():
 def unlock_account():
     db = get_db()
     db.execute("UPDATE players SET pin_code = NULL WHERE name = ?", (current_name(),))
+    db.commit()
+    return redirect(url_for("account_view"))
+
+
+@app.route("/konto/unread-toggle", methods=["POST"])
+def toggle_unread_tracking():
+    db = get_db()
+    player = query_one(db, "SELECT * FROM players WHERE name = ?", (current_name(),))
+    new_value = 0 if track_unread_enabled(player) else 1
+    db.execute(
+        "UPDATE players SET track_unread = ? WHERE name = ?", (new_value, current_name())
+    )
     db.commit()
     return redirect(url_for("account_view"))
 
@@ -401,6 +452,32 @@ def toggle_interest(game_id):
         )
     db.commit()
     return redirect(url_for("games_view"))
+
+
+@app.route("/games/<int:game_id>/comments/add", methods=["POST"])
+def add_comment(game_id):
+    text = clamp(request.form.get("text", ""), COMMENT_MAX_LENGTH)
+    if text:
+        db = get_db()
+        db.execute(
+            "INSERT INTO comments (game_id, author_name, text) VALUES (?, ?, ?)",
+            (game_id, current_name(), text),
+        )
+        db.commit()
+    return redirect(url_for("games_view"))
+
+
+@app.route("/games/<int:game_id>/comments/seen", methods=["POST"])
+def mark_comments_seen(game_id):
+    db = get_db()
+    db.execute(
+        "INSERT INTO comment_reads (user_name, game_id, last_seen_at) "
+        "VALUES (?, ?, datetime('now')) "
+        "ON CONFLICT(user_name, game_id) DO UPDATE SET last_seen_at = excluded.last_seen_at",
+        (current_name(), game_id),
+    )
+    db.commit()
+    return ("", 204)
 
 
 @app.route("/wishes/add", methods=["POST"])

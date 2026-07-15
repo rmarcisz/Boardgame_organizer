@@ -233,6 +233,8 @@ button:hover { background: var(--accent-dark); }
 
 .card.wish { background: #fff8ef; }
 
+.card.unread { background: #f0e2c4; }
+
 .card-header {
     display: flex;
     align-items: center;
@@ -295,6 +297,50 @@ button:hover { background: var(--accent-dark); }
 }
 
 .inline-form { display: inline; }
+
+.comments {
+    margin-top: 0.25rem;
+}
+
+.comment-toggle {
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.8rem;
+    color: var(--muted);
+    display: inline-block;
+}
+
+.comment-toggle::-webkit-details-marker { display: none; }
+
+.comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-top: 0.5rem;
+}
+
+.comment {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.comment .tag {
+    margin-right: 0.3rem;
+}
+
+.comment-form {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.comment-form input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
 
 .login-card {
     max-width: 360px;

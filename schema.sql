@@ -29,5 +29,21 @@ CREATE TABLE IF NOT EXISTS players (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     color TEXT,
-    pin_code TEXT
+    pin_code TEXT,
+    track_unread INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    author_name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS comment_reads (
+    user_name TEXT NOT NULL,
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    last_seen_at TEXT NOT NULL,
+    PRIMARY KEY (user_name, game_id)
 );

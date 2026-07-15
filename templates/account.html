@@ -26,6 +26,11 @@
         <button type="submit">Zablokuj konto</button>
     </form>
     {% endif %}
+
+    <p class="muted">Oznaczanie gier z nieprzeczytanymi komentarzami ciemniejszym tłem jest {{ 'włączone' if track_unread else 'wyłączone' }}.</p>
+    <form method="post" action="{{ url_for('toggle_unread_tracking') }}" class="inline-form">
+        <button type="submit" class="link-btn">{{ 'Wyłącz' if track_unread else 'Włącz' }}</button>
+    </form>
 </section>
 
 <section class="panel account-panel">

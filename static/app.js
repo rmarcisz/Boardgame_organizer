@@ -30,11 +30,11 @@ document.addEventListener("submit", function (event) {
 
                 var openIds = new Set(
                     Array.prototype.map.call(
-                        current.querySelectorAll("details.card[open]"),
+                        current.querySelectorAll("details[data-id][open]"),
                         function (el) { return el.dataset.id; }
                     )
                 );
-                updated.querySelectorAll("details.card").forEach(function (el) {
+                updated.querySelectorAll("details[data-id]").forEach(function (el) {
                     if (openIds.has(el.dataset.id)) el.open = true;
                 });
 
@@ -45,3 +45,20 @@ document.addEventListener("submit", function (event) {
             form.submit(); // fall back to a normal submit if the fetch failed
         });
 });
+
+// Marks a game's comments as seen (clearing the "unread" highlight) the
+// moment its comment thread is opened. "toggle" doesn't bubble, so this
+// listener is registered on the capture phase instead.
+document.addEventListener("toggle", function (event) {
+    var el = event.target;
+    if (!el.matches || !el.matches("details.comments") || !el.open) return;
+
+    var gameId = el.dataset.id.replace("comments-", "");
+    fetch("/games/" + gameId + "/comments/seen", {
+        method: "POST",
+        credentials: "same-origin",
+    }).then(function () {
+        var card = el.closest(".card");
+        if (card) card.classList.remove("unread");
+    });
+}, true);
