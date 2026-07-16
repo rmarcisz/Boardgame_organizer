@@ -18,6 +18,7 @@
 <section class="panel">
     <h2>Twoje gry</h2>
 
+    {{ macros.list_toolbar('collection-mine-section', default_sort='interest') }}
     <div id="collection-mine-section" class="ajax-region">
         {% if not my_collection %}
         <p class="muted">Nie dodałeś/aś jeszcze żadnej gry do szafy.</p>
@@ -26,7 +27,7 @@
         <div class="card-grid">
             {% for g in my_collection %}
             {% set requesters = requests_by_game.get(g['id'], []) %}
-            <details class="card" data-id="{{ g['id'] }}">
+            <details class="card" data-id="{{ g['id'] }}" data-name="{{ g['name'] }}" data-people="{{ ([g['owner_name']] + requesters) | unique | join(',') }}" data-interest="{{ requesters | length }}">
                 <summary>
                     <span class="card-name">{{ g['name'] }}</span>
                     {% if requesters %}<span class="tag" style="background-color: {{ requesters[0] | name_color }};">{{ requesters[0] }}{% if requesters|length > 1 %} +{{ requesters|length - 1 }}{% endif %}</span>{% endif %}
@@ -57,6 +58,7 @@
 <section class="panel">
     <h2>Wszystkie gry</h2>
 
+    {{ macros.list_toolbar('collection-all-section') }}
     <div id="collection-all-section" class="ajax-region">
         {% if not others_collection %}
         <p class="muted">Nikt inny nie dodał jeszcze gry do szafy.</p>
@@ -65,7 +67,7 @@
         <div class="card-grid">
             {% for g in others_collection %}
             {% set requesters = requests_by_game.get(g['id'], []) %}
-            <details class="card" data-id="{{ g['id'] }}">
+            <details class="card" data-id="{{ g['id'] }}" data-name="{{ g['name'] }}" data-people="{{ ([g['owner_name']] + requesters) | unique | join(',') }}" data-interest="{{ requesters | length }}">
                 <summary>
                     <span class="card-name">{{ g['name'] }}</span>
                     <span class="tag" style="background-color: {{ g['owner_name'] | name_color }};">{{ g['owner_name'] }}</span>

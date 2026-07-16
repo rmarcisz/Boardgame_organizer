@@ -26,6 +26,7 @@
 <section class="panel games-panel">
     <h2>Zabierane gry</h2>
 
+    {{ macros.list_toolbar('games-section') }}
     <div id="games-section" class="ajax-region">
         {% if not games %}
         <p class="muted">Nikt jeszcze nie dodał gry.</p>
@@ -33,7 +34,8 @@
 
         <div class="card-grid">
             {% for game in games %}
-            <details class="card {{ 'unread' if game['id'] in unread_game_ids else '' }}" data-id="{{ game['id'] }}">
+            {% set interested = interest_names.get(game['id'], []) %}
+            <details class="card {{ 'unread' if game['id'] in unread_game_ids else '' }}" data-id="{{ game['id'] }}" data-name="{{ game['name'] }}" data-people="{{ (game['owners'] + interested) | unique | join(',') }}" data-interest="{{ interested | length }}">
                 <summary>
                     <span class="card-name">{{ game['name'] }}</span>
                     <span class="tag {{ 'mine' if user in game['owners'] else '' }}" style="background-color: {{ game['owners'][0] | name_color }};">{{ game['owners'][0] }}{% if game['owners']|length > 1 %} +{{ game['owners']|length - 1 }}{% endif %}</span>
@@ -49,7 +51,6 @@
                     </p>
                     {% endif %}
 
-                    {% set interested = interest_names.get(game['id'], []) %}
                     <div class="card-actions">
                         {% if user not in game['owners'] %}
                         <form method="post" action="{{ url_for('toggle_interest', game_id=game['id']) }}" class="inline-form ajax-form">
@@ -76,6 +77,7 @@
 <section class="panel wishes-panel">
     <h2>Lista życzeń</h2>
 
+    {{ macros.list_toolbar('wishes-section') }}
     <div id="wishes-section" class="ajax-region">
         {% if not wishes %}
         <p class="muted">Lista życzeń jest jeszcze pusta.</p>
@@ -84,7 +86,7 @@
         <div class="card-grid">
             {% for wish in wishes %}
             {% set requesters = wish['requesters'] %}
-            <details class="card wish" data-id="{{ wish['id'] }}">
+            <details class="card wish" data-id="{{ wish['id'] }}" data-name="{{ wish['name'] }}" data-people="{{ requesters | unique | join(',') }}" data-interest="{{ requesters | length }}">
                 <summary>
                     <span class="card-name">{{ wish['name'] }}</span>
                     <span class="tag {{ 'mine' if user in requesters else '' }}" style="background-color: {{ requesters[0] | name_color }};">{{ requesters[0] }}{% if requesters|length > 1 %} +{{ requesters|length - 1 }}{% endif %}</span>

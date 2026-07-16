@@ -1,3 +1,21 @@
+{% macro list_toolbar(region_id, default_sort='az') %}
+<div class="list-toolbar" data-region="{{ region_id }}">
+    <label class="toolbar-field">
+        <span>Filtruj</span>
+        <select class="filter-select">
+            <option value="">Wszyscy</option>
+        </select>
+    </label>
+    <label class="toolbar-field">
+        <span>Sortuj</span>
+        <select class="sort-select">
+            <option value="az" {{ 'selected' if default_sort == 'az' else '' }}>A-Z</option>
+            <option value="interest" {{ 'selected' if default_sort == 'interest' else '' }}>Liczba zainteresowanych</option>
+        </select>
+    </label>
+</div>
+{% endmacro %}
+
 {% macro comment_thread(comments, data_id, add_action) %}
 <details class="comments" data-id="{{ data_id }}">
     <summary class="comment-toggle">💬 {{ comments|length }}</summary>

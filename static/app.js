@@ -1,3 +1,82 @@
+// Per-list filter (by person, or "" for everyone) and sort (a-z / by number
+// of interested people, ties broken alphabetically) controls. The toolbar
+// lives outside the .ajax-region it controls, so it survives region swaps
+// untouched - after a swap we just rebuild its options from the fresh cards
+// and re-apply whatever filter/sort was already selected.
+function collectPeople(region) {
+    var set = new Set();
+    region.querySelectorAll("[data-people]").forEach(function (el) {
+        el.dataset.people.split(",").forEach(function (p) {
+            p = p.trim();
+            if (p) set.add(p);
+        });
+    });
+    return Array.from(set).sort(function (a, b) { return a.localeCompare(b, "pl"); });
+}
+
+function refreshToolbar(toolbar, region) {
+    var select = toolbar.querySelector(".filter-select");
+    if (!select) return;
+    var current = select.value;
+    var people = collectPeople(region);
+
+    select.innerHTML = "";
+    var allOption = document.createElement("option");
+    allOption.value = "";
+    allOption.textContent = "Wszyscy";
+    select.appendChild(allOption);
+    people.forEach(function (name) {
+        var opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+    });
+
+    select.value = people.indexOf(current) !== -1 ? current : "";
+}
+
+function applyFilterSort(toolbar, region) {
+    var filterValue = toolbar.querySelector(".filter-select").value;
+    var sortValue = toolbar.querySelector(".sort-select").value;
+
+    region.querySelectorAll(".card-grid").forEach(function (grid) {
+        var cards = Array.prototype.slice.call(grid.children);
+
+        cards.forEach(function (card) {
+            var people = (card.dataset.people || "").split(",").map(function (p) { return p.trim(); });
+            card.style.display = (!filterValue || people.indexOf(filterValue) !== -1) ? "" : "none";
+        });
+
+        cards.sort(function (a, b) {
+            if (sortValue === "interest") {
+                var diff = parseInt(b.dataset.interest || "0", 10) - parseInt(a.dataset.interest || "0", 10);
+                if (diff !== 0) return diff;
+            }
+            return (a.dataset.name || "").localeCompare(b.dataset.name || "", "pl");
+        });
+        cards.forEach(function (card) { grid.appendChild(card); });
+    });
+}
+
+function initToolbar(toolbar) {
+    var region = document.getElementById(toolbar.dataset.region);
+    if (!region) return;
+    refreshToolbar(toolbar, region);
+    applyFilterSort(toolbar, region);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".list-toolbar[data-region]").forEach(initToolbar);
+});
+
+document.addEventListener("change", function (event) {
+    var el = event.target;
+    if (!el.matches(".filter-select, .sort-select")) return;
+    var toolbar = el.closest(".list-toolbar");
+    var region = document.getElementById(toolbar.dataset.region);
+    if (region) applyFilterSort(toolbar, region);
+});
+
 // Intercepts .ajax-form submits (star toggle, "bring wish", comments, ...) so
 // they update the page's .ajax-region containers in place instead of doing a
 // full page navigation. Works on any page - regions are matched by id.
@@ -45,6 +124,12 @@ document.addEventListener("submit", function (event) {
                 });
 
                 current.replaceWith(updated);
+
+                var toolbar = document.querySelector('.list-toolbar[data-region="' + id + '"]');
+                if (toolbar) {
+                    refreshToolbar(toolbar, updated);
+                    applyFilterSort(toolbar, updated);
+                }
             });
             updateCommentsLayout();
         })
