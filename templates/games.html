@@ -38,6 +38,14 @@
             <details class="card {{ 'unread' if game['id'] in unread_game_ids else '' }}" data-id="{{ game['id'] }}" data-name="{{ game['name'] }}" data-people="{{ (game['owners'] + interested) | unique | join(',') }}" data-interest="{{ interested | length }}">
                 <summary>
                     <span class="card-name">{{ game['name'] }}</span>
+                    <span class="star-info">
+                        {% if user not in game['owners'] %}
+                        <form method="post" action="{{ url_for('toggle_interest', game_id=game['id']) }}" class="inline-form ajax-form">
+                            <button type="submit" class="star-btn {{ 'active' if game['id'] in my_interests else '' }}" title="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}" aria-label="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}">{{ '★' if game['id'] in my_interests else '☆' }}</button>
+                        </form>
+                        {% endif %}
+                        {% if interested %}<span class="star-count" title="Liczba zainteresowanych osób">{{ interested | length }}</span>{% endif %}
+                    </span>
                     <span class="tag {{ 'mine' if user in game['owners'] else '' }}" style="background-color: {{ game['owners'][0] | name_color }};">{{ game['owners'][0] }}{% if game['owners']|length > 1 %} +{{ game['owners']|length - 1 }}{% endif %}</span>
                 </summary>
                 <div class="card-body">
@@ -52,11 +60,6 @@
                     {% endif %}
 
                     <div class="card-actions">
-                        {% if user not in game['owners'] %}
-                        <form method="post" action="{{ url_for('toggle_interest', game_id=game['id']) }}" class="inline-form ajax-form">
-                            <button type="submit" class="star-btn {{ 'active' if game['id'] in my_interests else '' }}" title="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}" aria-label="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}">{{ '★' if game['id'] in my_interests else '☆' }}</button>
-                        </form>
-                        {% endif %}
                         {% if interested %}
                             {% for person in interested %}
                             <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>

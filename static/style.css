@@ -147,6 +147,8 @@ main {
     .two-col-mobile .interested { font-size: 0.75rem; }
     .two-col-mobile .card-actions button { font-size: 0.75rem; padding: 0.4rem 0.5rem; }
     .two-col-mobile .tag { font-size: 0.6rem; }
+    .two-col-mobile .star-btn { font-size: 1.15rem; }
+    .two-col-mobile .star-count { font-size: 0.65rem; }
     .two-col-mobile .list-toolbar { gap: 0.3rem 0.6rem; margin-bottom: 0.6rem; }
     .two-col-mobile .toolbar-field { font-size: 0.7rem; }
     .two-col-mobile .toolbar-field select { font-size: 0.7rem; padding: 0.25rem 0.35rem; }
@@ -253,6 +255,19 @@ button:hover { background: var(--accent-dark); }
 .star-btn:hover { background: none; color: var(--accent); }
 
 .star-btn.active { color: var(--accent); }
+
+.star-info {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    flex-shrink: 0;
+}
+
+.star-count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+}
 
 .card-grid {
     display: grid;
