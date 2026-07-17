@@ -190,3 +190,56 @@ document.addEventListener("toggle", function (event) {
         if (card) card.classList.remove("unread");
     });
 }, true);
+
+// Typeahead for the "propose an activity" game name field: as the organizer
+// types, shows up to 5 already-known games (from the Gry tab) so they reuse
+// an existing game's exact spelling instead of creating a near-duplicate.
+var KNOWN_GAMES = (function () {
+    var el = document.getElementById("known-games");
+    if (!el) return [];
+    try {
+        return JSON.parse(el.textContent);
+    } catch (e) {
+        return [];
+    }
+})();
+
+function matchGames(query) {
+    query = query.trim().toLowerCase();
+    if (!query) return [];
+    return KNOWN_GAMES
+        .filter(function (name) { return name.toLowerCase().indexOf(query) !== -1; })
+        .slice(0, 5);
+}
+
+function renderGameSuggestions(input) {
+    var box = input.parentElement.querySelector(".game-suggestions");
+    if (!box) return;
+    box.innerHTML = "";
+    matchGames(input.value).forEach(function (name) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "game-suggestion";
+        btn.textContent = name;
+        // mousedown fires before the input's blur, so the click still lands
+        // even though clicking the button steals focus from the text field.
+        btn.addEventListener("mousedown", function (event) {
+            event.preventDefault();
+            input.value = name;
+            box.innerHTML = "";
+            input.focus();
+        });
+        box.appendChild(btn);
+    });
+}
+
+document.addEventListener("input", function (event) {
+    if (!event.target.matches(".game-name-input")) return;
+    renderGameSuggestions(event.target);
+});
+
+document.addEventListener("focusout", function (event) {
+    if (!event.target.matches(".game-name-input")) return;
+    var box = event.target.parentElement.querySelector(".game-suggestions");
+    if (box) box.innerHTML = "";
+});

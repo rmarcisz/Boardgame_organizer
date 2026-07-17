@@ -1,6 +1,7 @@
 import hashlib
 import os
 import sqlite3
+from datetime import date, timedelta
 from pathlib import Path
 
 from flask import Flask, flash, g, redirect, render_template, request, session, url_for
@@ -22,6 +23,31 @@ GAME_NAME_MAX_LENGTH = 100
 NOTES_MAX_LENGTH = 300
 COMMENT_MAX_LENGTH = 255
 SESSION_TIME_MAX_LENGTH = 32
+
+TRIP_START = date(2026, 7, 25)  # Saturday
+TRIP_END = date(2026, 8, 2)  # Sunday
+TRIP_DAYS = [TRIP_START + timedelta(days=i) for i in range((TRIP_END - TRIP_START).days + 1)]
+POLISH_WEEKDAYS = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]
+
+
+def day_label(d):
+    return f"{POLISH_WEEKDAYS[d.weekday()]} {d.day:02d}.{d.month:02d}"
+
+
+def group_sessions_by_day(sessions):
+    """Bucket sessions into the trip's day range; anything outside it lands in a trailing 'other' bucket."""
+    days = [{"date": d, "label": day_label(d), "sessions": []} for d in TRIP_DAYS]
+    by_date = {d["date"]: d for d in days}
+    other = {"date": None, "label": "Poza terminem wyjazdu", "sessions": []}
+    for s in sessions:
+        try:
+            session_date = date.fromisoformat(s["session_time"][:10])
+        except ValueError:
+            session_date = None
+        by_date.get(session_date, other)["sessions"].append(s)
+    if other["sessions"]:
+        days.append(other)
+    return days
 
 NAME_COLORS = [
     "#c1552c",  # orange
@@ -606,21 +632,34 @@ def sessions_view():
         if row["user_name"] == name:
             my_joins.add(row["session_id"])
 
+    comments_by_session = {}
+    for row in query_all(db, "SELECT * FROM session_comments ORDER BY created_at"):
+        comments_by_session.setdefault(row["session_id"], []).append(row)
+
+    known_games = sorted(
+        {row["name"] for row in query_all(db, "SELECT DISTINCT name FROM games")},
+        key=polish_sort_key,
+    )
+
     return render_template(
         "sessions.html",
         user=name,
-        sessions=sessions,
+        days=group_sessions_by_day(sessions),
         joins_by_session=joins_by_session,
         my_joins=my_joins,
+        comments_by_session=comments_by_session,
+        known_games=known_games,
     )
 
 
 @app.route("/rozgrywki/add", methods=["POST"])
 def add_session():
     game_name = clamp(request.form.get("game_name", ""), GAME_NAME_MAX_LENGTH)
-    session_time = clamp(request.form.get("session_time", ""), SESSION_TIME_MAX_LENGTH)
+    date_str = request.form.get("date", "").strip()
+    time_str = request.form.get("time", "").strip()
     notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
-    if game_name and session_time:
+    session_time = clamp(f"{date_str}T{time_str}", SESSION_TIME_MAX_LENGTH)
+    if game_name and date_str and time_str:
         db = get_db()
         db.execute(
             "INSERT INTO sessions (game_name, session_time, notes, organizer_name) VALUES (?, ?, ?, ?)",
@@ -661,6 +700,19 @@ def delete_session(session_id):
         (session_id, current_name()),
     )
     db.commit()
+    return redirect(url_for("sessions_view"))
+
+
+@app.route("/rozgrywki/<int:session_id>/comments/add", methods=["POST"])
+def add_session_comment(session_id):
+    text = clamp(request.form.get("text", ""), COMMENT_MAX_LENGTH)
+    if text:
+        db = get_db()
+        db.execute(
+            "INSERT INTO session_comments (session_id, author_name, text) VALUES (?, ?, ?)",
+            (session_id, current_name(), text),
+        )
+        db.commit()
     return redirect(url_for("sessions_view"))
 
 

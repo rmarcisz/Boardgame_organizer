@@ -71,6 +71,14 @@ CREATE TABLE IF NOT EXISTS session_joins (
     PRIMARY KEY (user_name, session_id)
 );
 
+CREATE TABLE IF NOT EXISTS session_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    author_name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS collection_games (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
