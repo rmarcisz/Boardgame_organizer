@@ -212,25 +212,38 @@ function matchGames(query) {
         .slice(0, 5);
 }
 
+function addGameSuggestion(box, input, label, value, extraClass) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = extraClass ? "game-suggestion " + extraClass : "game-suggestion";
+    btn.textContent = label;
+    // mousedown fires before the input's blur, so the click still lands
+    // even though clicking the button steals focus from the text field.
+    btn.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+        input.value = value;
+        box.innerHTML = "";
+        input.focus();
+    });
+    box.appendChild(btn);
+}
+
 function renderGameSuggestions(input) {
     var box = input.parentElement.querySelector(".game-suggestions");
     if (!box) return;
     box.innerHTML = "";
-    matchGames(input.value).forEach(function (name) {
-        var btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "game-suggestion";
-        btn.textContent = name;
-        // mousedown fires before the input's blur, so the click still lands
-        // even though clicking the button steals focus from the text field.
-        btn.addEventListener("mousedown", function (event) {
-            event.preventDefault();
-            input.value = name;
-            box.innerHTML = "";
-            input.focus();
-        });
-        box.appendChild(btn);
-    });
+    var query = input.value.trim();
+    if (!query) return;
+
+    var matches = matchGames(query);
+    matches.forEach(function (name) { addGameSuggestion(box, input, name, name); });
+
+    // Skip the "add as new" option when what's typed already matches a known
+    // game exactly - the matching suggestion above already covers that case.
+    var exactMatch = matches.some(function (name) { return name.toLowerCase() === query.toLowerCase(); });
+    if (!exactMatch) {
+        addGameSuggestion(box, input, "Dodaj jako: " + query, query, "game-suggestion-add");
+    }
 }
 
 document.addEventListener("input", function (event) {

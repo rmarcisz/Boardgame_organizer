@@ -323,11 +323,12 @@ button:hover { background: var(--accent-dark); }
 .game-name-field {
     position: relative;
     flex: 1 1 200px;
-    display: flex;
 }
 
 .game-name-field .game-name-input {
-    flex: 1 1 auto;
+    width: 100%;
+    display: block;
+    white-space: nowrap;
 }
 
 .game-suggestions {
@@ -336,28 +337,43 @@ button:hover { background: var(--accent-dark); }
     left: 0;
     right: 0;
     z-index: 5;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    margin-top: 0.3rem;
+    display: none;
+    flex-direction: column;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 0.25rem;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-.game-suggestions:empty {
-    display: none;
+.game-suggestions:not(:empty) {
+    display: flex;
 }
 
 .game-suggestion {
-    background: var(--border);
+    background: none;
     color: var(--ink);
     border: none;
-    border-radius: 999px;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.8rem;
+    border-radius: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    text-align: left;
     cursor: pointer;
 }
 
 .game-suggestion:hover {
-    background: #ddd0bf;
+    background: var(--border);
+}
+
+.game-suggestion-add {
+    color: var(--accent);
+    font-weight: 600;
+    border-top: 1px solid var(--border);
+}
+
+.game-suggestion-add:hover {
+    background: #fff3ea;
 }
 
 .card-grid {
@@ -589,7 +605,8 @@ button:hover { background: var(--accent-dark); }
     .topbar h1 { font-size: 1.05rem; }
     .tab { font-size: 0.8rem; padding: 0.65rem 0.5rem; }
     .add-form { flex-direction: column; }
-    .add-form input[type="text"] { flex-basis: auto; }
+    .add-form input[type="text"],
+    .add-form .game-name-field { flex-basis: auto; }
     .add-form button { width: 100%; }
     .card-grid { grid-template-columns: 1fr; }
     .login-card { margin: 1.5rem auto; padding: 1.5rem; }
