@@ -266,7 +266,14 @@ def login():
             return render_template("login.html", error="Wpisz imię.")
 
         db = get_db()
-        player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
+        # Python's .lower() is used instead of SQL COLLATE NOCASE because SQLite's
+        # builtin NOCASE only folds ASCII a-z, not Polish diacritics (Ł/ł, Ż/ż, ...).
+        player = next(
+            (p for p in query_all(db, "SELECT * FROM players") if p["name"].lower() == name.lower()),
+            None,
+        )
+        if player:
+            name = player["name"]  # reuse the spelling recorded at first login
         if player and player["pin_code"]:
             if not code:
                 return render_template("login.html", name=name, need_code=True)
