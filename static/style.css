@@ -264,6 +264,27 @@ button:hover { background: var(--accent-dark); }
     flex-shrink: 0;
 }
 
+.card-owner-star {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+}
+
+.card-owner-star .star-info { justify-content: center; }
+
+.owner-avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
 .star-count {
     font-size: 0.8rem;
     font-weight: 600;
