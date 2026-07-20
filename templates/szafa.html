@@ -30,7 +30,7 @@
             <details class="card" data-id="{{ g['id'] }}" data-name="{{ g['name'] }}" data-people="{{ ([g['owner_name']] + requesters) | unique | join(',') }}" data-interest="{{ requesters | length }}">
                 <summary>
                     <span class="card-name">{{ g['name'] }}</span>
-                    {% if requesters %}<span class="tag" style="background-color: {{ requesters[0] | name_color }};">{{ requesters[0] }}{% if requesters|length > 1 %} +{{ requesters|length - 1 }}{% endif %}</span>{% endif %}
+                    {{ macros.person_avatar(requesters) }}
                 </summary>
                 <div class="card-body">
                     {% if g['notes'] %}<p class="notes">{{ g['notes'] }}</p>{% endif %}
@@ -70,7 +70,7 @@
             <details class="card" data-id="{{ g['id'] }}" data-name="{{ g['name'] }}" data-people="{{ ([g['owner_name']] + requesters) | unique | join(',') }}" data-interest="{{ requesters | length }}">
                 <summary>
                     <span class="card-name">{{ g['name'] }}</span>
-                    <span class="tag" style="background-color: {{ g['owner_name'] | name_color }};">{{ g['owner_name'] }}</span>
+                    {{ macros.person_avatar([g['owner_name']]) }}
                 </summary>
                 <div class="card-body">
                     {% if g['notes'] %}<p class="notes">{{ g['notes'] }}</p>{% endif %}

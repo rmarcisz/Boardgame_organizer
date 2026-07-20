@@ -285,6 +285,19 @@ button:hover { background: var(--accent-dark); }
     font-weight: 700;
 }
 
+.avatar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.avatar-more {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 600;
+}
+
 .star-count {
     font-size: 0.8rem;
     font-weight: 600;

@@ -16,6 +16,15 @@
 </div>
 {% endmacro %}
 
+{% macro person_avatar(names, extra_class='') %}
+{% if names %}
+<span class="avatar-group">
+    <span class="tag owner-avatar {{ extra_class }}" style="background-color: {{ names[0] | name_color }};" title="{{ names | join(', ') }}">{{ names[0][0] | upper }}</span>
+    {% if names|length > 1 %}<span class="avatar-more" title="{{ names[1:] | join(', ') }}">+{{ names|length - 1 }}</span>{% endif %}
+</span>
+{% endif %}
+{% endmacro %}
+
 {% macro comment_thread(comments, data_id, add_action, delete_endpoint, current_user) %}
 <details class="comments" data-id="{{ data_id }}">
     <summary class="comment-toggle">💬 {{ comments|length }}</summary>

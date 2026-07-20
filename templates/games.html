@@ -90,7 +90,7 @@
             <details class="card wish" data-id="{{ wish['id'] }}" data-name="{{ wish['name'] }}" data-people="{{ requesters | unique | join(',') }}" data-interest="{{ requesters | length }}">
                 <summary>
                     <span class="card-name">{{ wish['name'] }}</span>
-                    <span class="tag {{ 'mine' if user in requesters else '' }}" style="background-color: {{ requesters[0] | name_color }};">{{ requesters[0] }}{% if requesters|length > 1 %} +{{ requesters|length - 1 }}{% endif %}</span>
+                    {{ macros.person_avatar(requesters, 'mine' if user in requesters else '') }}
                 </summary>
                 <div class="card-body">
                     {% if wish['image_url'] %}<img class="card-thumb" src="{{ wish['image_url'] }}" alt="">{% endif %}
