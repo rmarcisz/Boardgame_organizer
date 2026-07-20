@@ -44,7 +44,7 @@
                             <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
                             {% endfor %}
                         {% else %}
-                            <span class="muted">Nikt jeszcze nie chce</span>
+                            <span class="star-btn muted" aria-hidden="true">☆</span>
                         {% endif %}
                         {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user) }}
                     </div>
@@ -83,13 +83,9 @@
                             <button type="submit">Interesuje mnie</button>
                             {% endif %}
                         </form>
-                        {% if requesters %}
-                            {% for person in requesters %}
-                            <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="muted">Nikt jeszcze nie chce</span>
-                        {% endif %}
+                        {% for person in requesters %}
+                        <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
+                        {% endfor %}
                         {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user) }}
                     </div>
                 </div>

@@ -100,11 +100,6 @@
                 <div class="card-body">
                     {% if wish['image_url'] %}<img class="card-thumb" src="{{ wish['image_url'] }}" alt="">{% endif %}
                     {% if wish['notes'] %}<p class="notes">{{ wish['notes'] }}</p>{% endif %}
-                    <p class="interested">Chcą:
-                        {% for r in requesters %}
-                        <span class="tag" style="background-color: {{ r | name_color }};">{{ r }}</span>
-                        {% endfor %}
-                    </p>
 
                     <div class="card-actions">
                         {% if user not in requesters %}
@@ -115,6 +110,9 @@
                             <button type="submit" class="btn-secondary">Też chcę!</button>
                         </form>
                         {% endif %}
+                        {% for r in requesters %}
+                        <span class="tag" style="background-color: {{ r | name_color }};">{{ r }}</span>
+                        {% endfor %}
                         {{ macros.comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id']), 'delete_wish_comment', user) }}
                     </div>
                 </div>
