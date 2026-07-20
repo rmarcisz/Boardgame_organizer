@@ -139,7 +139,7 @@ main {
     .two-col-mobile .panel { padding: 0.75rem; }
     .two-col-mobile .panel h2 { font-size: 1.05rem; }
     .two-col-mobile .card-grid { grid-template-columns: 1fr; gap: 0.6rem; }
-    .two-col-mobile .card { padding: 0.3rem 0.6rem; gap: 0.3rem; }
+    .two-col-mobile .card { padding: 0.2rem 0.5rem; gap: 0.3rem; }
     .two-col-mobile .card-thumb { height: 90px; }
     .two-col-mobile .card h3,
     .two-col-mobile .card-name { font-size: 0.9rem; }
@@ -148,7 +148,7 @@ main {
     .two-col-mobile .interested { font-size: 0.75rem; }
     .two-col-mobile .card-actions button { font-size: 0.75rem; padding: 0.4rem 0.5rem; }
     .two-col-mobile .tag { font-size: 0.6rem; }
-    .two-col-mobile .star-btn { font-size: 1rem; }
+    .two-col-mobile .star-btn { font-size: 0.85rem; }
     .two-col-mobile .star-count { font-size: 0.65rem; }
     .two-col-mobile .list-toolbar { gap: 0.3rem 0.6rem; margin-bottom: 0.6rem; }
     .two-col-mobile .toolbar-field { font-size: 0.7rem; }
@@ -248,7 +248,7 @@ button:hover { background: var(--accent-dark); }
     border: none;
     padding: 0;
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.85rem;
     line-height: 1;
     color: var(--muted);
     flex-shrink: 0;
@@ -276,14 +276,14 @@ button:hover { background: var(--accent-dark); }
 .card-owner-star .star-info { justify-content: center; }
 
 .owner-avatar {
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 0.95rem;
+    height: 0.95rem;
     padding: 0;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.55rem;
+    font-size: 0.48rem;
     font-weight: 700;
 }
 
@@ -422,7 +422,7 @@ button:hover { background: var(--accent-dark); }
 .card {
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 0.3rem 1rem;
+    padding: 0.2rem 0.8rem;
     background: #fffdfa;
     display: flex;
     flex-direction: column;
