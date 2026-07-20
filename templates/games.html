@@ -58,12 +58,17 @@
                     </p>
 
                     <div class="card-actions">
+                        {% if user not in game['owners'] %}
+                        <form method="post" action="{{ url_for('toggle_interest', game_id=game['id']) }}" class="inline-form ajax-form">
+                            <button type="submit" class="star-btn {{ 'active' if game['id'] in my_interests else '' }}" title="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}" aria-label="{{ 'Już mnie to nie interesuje' if game['id'] in my_interests else 'Interesuje mnie' }}">{{ '★' if game['id'] in my_interests else '☆' }}</button>
+                        </form>
+                        {% elif not interested %}
+                        <span class="star-btn muted" aria-hidden="true">☆</span>
+                        {% endif %}
                         {% if interested %}
                             {% for person in interested %}
                             <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
                             {% endfor %}
-                        {% else %}
-                            <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
                         {% endif %}
 
                         {{ macros.comment_thread(comments_by_game.get(game['id'], []), 'comments-game-' ~ game['id'], url_for('add_comment', game_id=game['id']), 'delete_comment', user) }}

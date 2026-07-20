@@ -470,6 +470,13 @@ button:hover { background: var(--accent-dark); }
     display: none;
 }
 
+/* Short mode shows the owner's initial + favorite star in the summary; once
+   expanded, the owner is already spelled out via "Zabiera" and the star
+   moves down next to the interested-people list, so hide the summary copy. */
+.card[open] > summary .card-owner-star {
+    display: none;
+}
+
 .tag {
     font-size: 0.7rem;
     padding: 0.08rem 0.5rem;
