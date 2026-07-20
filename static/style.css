@@ -497,7 +497,11 @@ button:hover { background: var(--accent-dark); }
     padding-top: 0.5rem;
 }
 
-.inline-form { display: inline; }
+/* display:inline only holds in normal flow - as a flex item (star-info,
+   card-owner-star, card-actions, ...) it gets blockified, and a bare block's
+   line-height (inherited from body) then pads it out well past its button's
+   own height. Pin it down so the form never adds height beyond its content. */
+.inline-form { display: inline; line-height: 1; }
 
 .comments {
     margin-left: auto;
