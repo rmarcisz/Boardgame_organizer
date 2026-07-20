@@ -84,7 +84,7 @@ main {
     align-items: start;
 }
 
-.two-col .panel { margin-bottom: 0; }
+.two-col .panel { margin-bottom: 0; min-width: 0; }
 
 .games-wishes-row.comments-open-games,
 .games-wishes-row.comments-open-wishes {
@@ -390,6 +390,7 @@ button:hover { background: var(--accent-dark); }
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    min-width: 0;
 }
 
 .card.wish { background: #fff8ef; }
@@ -418,6 +419,8 @@ button:hover { background: var(--accent-dark); }
     flex: 1;
     font-weight: 600;
     font-size: 1.05rem;
+    min-width: 0;
+    overflow-wrap: break-word;
 }
 
 .card-body {
@@ -444,7 +447,7 @@ button:hover { background: var(--accent-dark); }
 
 .origin-note { font-size: 0.8rem; font-style: italic; margin: 0; }
 
-.notes { margin: 0; font-size: 0.9rem; }
+.notes { margin: 0; font-size: 0.9rem; overflow-wrap: break-word; }
 
 .interested { margin: 0; font-size: 0.85rem; }
 
@@ -489,6 +492,7 @@ button:hover { background: var(--accent-dark); }
     margin: 0;
     font-size: 0.85rem;
     line-height: 1.4;
+    overflow-wrap: break-word;
 }
 
 .comment .tag {
