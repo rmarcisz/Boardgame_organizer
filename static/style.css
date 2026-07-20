@@ -419,6 +419,14 @@ button:hover { background: var(--accent-dark); }
     gap: 1rem;
 }
 
+/* Chat mode: a card whose comment thread is open takes the full row width
+   instead of staying pinned to its normal card-grid column width - its own
+   content (comment list, reply input, ...) stretches along with it, since
+   those are flex:1 children that just fill whatever width the card gets. */
+.card:has(> .card-body .comments[open]) {
+    grid-column: 1 / -1;
+}
+
 .card {
     border: 1px solid var(--border);
     border-radius: 10px;
