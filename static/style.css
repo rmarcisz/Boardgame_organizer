@@ -88,8 +88,13 @@ main {
 
 /* While a comment thread is open in one panel of a two-col row, that panel
    takes the full row and its sibling panel(s) disappear - see
-   updateCommentsLayout() in app.js. */
-.two-col.comments-active {
+   updateCommentsLayout() in app.js. The extra .two-col-mobile qualifier
+   isn't needed on desktop, but it raises specificity enough to beat the
+   720px breakpoint's own .two-col.two-col-mobile column override below,
+   which otherwise wins on mobile since it comes later in the cascade at
+   the same specificity. */
+.two-col.comments-active,
+.two-col.two-col-mobile.comments-active {
     grid-template-columns: 1fr;
 }
 
