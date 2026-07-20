@@ -231,6 +231,56 @@ def group_games(rows):
     return [groups[key] for key in order]
 
 
+def merge_fulfilled_wishes(db):
+    """A wish is already fulfilled if a taken game with the same name exists.
+    Fold each such wisher into that game's interests and carry their wishlist
+    discussion into the game's comment thread, instead of showing the same
+    game twice. Idempotent - safe to run on every startup."""
+    games_by_name = {}
+    for row in query_all(db, "SELECT id, name, origin_wish_requester FROM games"):
+        games_by_name.setdefault(row["name"].strip().lower(), []).append(row)
+
+    for wish in query_all(db, "SELECT * FROM wishes"):
+        matches = games_by_name.get(wish["name"].strip().lower())
+        if not matches:
+            continue
+        requester = wish["requester_name"]
+        primary = matches[0]
+        for game in matches:
+            is_owner = query_one(
+                db, "SELECT 1 FROM games WHERE id = ? AND owner_name = ?", (game["id"], requester)
+            )
+            if is_owner:
+                continue
+            already_interested = query_one(
+                db,
+                "SELECT 1 FROM interests WHERE user_name = ? AND game_id = ?",
+                (requester, game["id"]),
+            )
+            if not already_interested:
+                db.execute(
+                    "INSERT INTO interests (user_name, game_id) VALUES (?, ?)",
+                    (requester, game["id"]),
+                )
+            origin = [n for n in (game["origin_wish_requester"] or "").split(",") if n]
+            if requester not in origin:
+                origin.append(requester)
+                db.execute(
+                    "UPDATE games SET origin_wish_requester = ? WHERE id = ?",
+                    (",".join(origin), game["id"]),
+                )
+                game["origin_wish_requester"] = ",".join(origin)
+
+        db.execute(
+            "INSERT INTO comments (game_id, author_name, text, created_at) "
+            "SELECT ?, author_name, text, created_at FROM wish_comments WHERE wish_id = ?",
+            (primary["id"], wish["id"]),
+        )
+        db.execute("DELETE FROM wish_comments WHERE wish_id = ?", (wish["id"],))
+        db.execute("DELETE FROM wishes WHERE id = ?", (wish["id"],))
+    db.commit()
+
+
 def init_db():
     db = connect_db()
     for statement in SCHEMA_PATH.read_text().split(";"):
@@ -253,6 +303,7 @@ def init_db():
         except Exception:
             pass  # column already exists
     db.commit()
+    merge_fulfilled_wishes(db)
     # Backfill players from names already present in existing trip data, ordered
     # by earliest activity, so they keep stable, distinct colors.
     existing = {row["name"] for row in query_all(db, "SELECT name FROM players")}
