@@ -86,13 +86,14 @@ main {
 
 .two-col .panel { margin-bottom: 0; min-width: 0; }
 
-.games-wishes-row.comments-open-games,
-.games-wishes-row.comments-open-wishes {
+/* While a comment thread is open in one panel of a two-col row, that panel
+   takes the full row and its sibling panel(s) disappear - see
+   updateCommentsLayout() in app.js. */
+.two-col.comments-active {
     grid-template-columns: 1fr;
 }
 
-.games-wishes-row.comments-open-games .wishes-panel,
-.games-wishes-row.comments-open-wishes .games-panel {
+.two-col.comments-active .panel:not(.comments-focus) {
     display: none;
 }
 

@@ -150,20 +150,24 @@ function isVisiblyOpen(el) {
     return true;
 }
 
-// While a game's comment thread is open, expand the games column to full
-// width and hide the wishlist column (and vice versa for a wish's thread).
+// While a comment thread is open in one panel of a two-col row (games/
+// wishlist, szafa's own/others columns, ...), expand that panel to the full
+// row width and hide its sibling panel(s).
 function updateCommentsLayout() {
-    var gameOpen = Array.prototype.some.call(
-        document.querySelectorAll("#games-section details.comments[open]"),
-        isVisiblyOpen
-    );
-    var wishOpen = Array.prototype.some.call(
-        document.querySelectorAll("#wishes-section details.comments[open]"),
-        isVisiblyOpen
-    );
-    document.querySelectorAll(".games-wishes-row").forEach(function (el) {
-        el.classList.toggle("comments-open-games", gameOpen);
-        el.classList.toggle("comments-open-wishes", !gameOpen && wishOpen);
+    document.querySelectorAll(".two-col").forEach(function (row) {
+        var panels = Array.prototype.filter.call(row.children, function (child) {
+            return child.classList.contains("panel");
+        });
+        var focused = null;
+        panels.forEach(function (panel) {
+            var hasOpenThread = Array.prototype.some.call(
+                panel.querySelectorAll("details.comments[open]"),
+                isVisiblyOpen
+            );
+            panel.classList.toggle("comments-focus", hasOpenThread);
+            if (hasOpenThread) focused = panel;
+        });
+        row.classList.toggle("comments-active", !!focused);
     });
 }
 
