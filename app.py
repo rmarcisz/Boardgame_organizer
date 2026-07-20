@@ -557,6 +557,17 @@ def add_comment(game_id):
     return redirect(url_for("games_view"))
 
 
+@app.route("/games/comments/<int:comment_id>/delete", methods=["POST"])
+def delete_comment(comment_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM comments WHERE id = ? AND author_name = ?",
+        (comment_id, current_name()),
+    )
+    db.commit()
+    return redirect(url_for("games_view"))
+
+
 @app.route("/games/<int:game_id>/comments/seen", methods=["POST"])
 def mark_comments_seen(game_id):
     db = get_db()
@@ -580,6 +591,17 @@ def add_wish_comment(wish_id):
             (wish_id, current_name(), text),
         )
         db.commit()
+    return redirect(url_for("games_view"))
+
+
+@app.route("/wishes/comments/<int:comment_id>/delete", methods=["POST"])
+def delete_wish_comment(comment_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM wish_comments WHERE id = ? AND author_name = ?",
+        (comment_id, current_name()),
+    )
+    db.commit()
     return redirect(url_for("games_view"))
 
 
@@ -767,6 +789,17 @@ def add_session_comment(session_id):
     return redirect(url_for("sessions_view"))
 
 
+@app.route("/rozgrywki/comments/<int:comment_id>/delete", methods=["POST"])
+def delete_session_comment(comment_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM session_comments WHERE id = ? AND author_name = ?",
+        (comment_id, current_name()),
+    )
+    db.commit()
+    return redirect(url_for("sessions_view"))
+
+
 @app.route("/szafa")
 def szafa_view():
     db = get_db()
@@ -862,6 +895,17 @@ def add_collection_comment(collection_game_id):
             (collection_game_id, current_name(), text),
         )
         db.commit()
+    return redirect(url_for("szafa_view"))
+
+
+@app.route("/szafa/comments/<int:comment_id>/delete", methods=["POST"])
+def delete_collection_comment(comment_id):
+    db = get_db()
+    db.execute(
+        "DELETE FROM collection_comments WHERE id = ? AND author_name = ?",
+        (comment_id, current_name()),
+    )
+    db.commit()
     return redirect(url_for("szafa_view"))
 
 

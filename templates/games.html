@@ -68,7 +68,7 @@
                             <span class="muted">Nikt jeszcze nie jest zainteresowany</span>
                         {% endif %}
 
-                        {{ macros.comment_thread(comments_by_game.get(game['id'], []), 'comments-game-' ~ game['id'], url_for('add_comment', game_id=game['id'])) }}
+                        {{ macros.comment_thread(comments_by_game.get(game['id'], []), 'comments-game-' ~ game['id'], url_for('add_comment', game_id=game['id']), 'delete_comment', user) }}
                     </div>
                 </div>
             </details>
@@ -112,7 +112,7 @@
                             <button type="submit" class="btn-secondary">Też chcę!</button>
                         </form>
                         {% endif %}
-                        {{ macros.comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id'])) }}
+                        {{ macros.comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id']), 'delete_wish_comment', user) }}
                     </div>
                 </div>
             </details>

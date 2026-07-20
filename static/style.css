@@ -495,6 +495,21 @@ button:hover { background: var(--accent-dark); }
     margin-right: 0.3rem;
 }
 
+.comment-delete-form {
+    display: inline;
+}
+
+.comment-delete {
+    padding: 0 0.3rem;
+    text-decoration: none;
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+.comment-delete:hover {
+    opacity: 1;
+}
+
 .comment-form {
     display: flex;
     gap: 0.4rem;

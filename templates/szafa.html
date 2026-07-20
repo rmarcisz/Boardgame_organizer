@@ -46,7 +46,7 @@
                         {% else %}
                             <span class="muted">Nikt jeszcze nie chce</span>
                         {% endif %}
-                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id'])) }}
+                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user) }}
                     </div>
                 </div>
             </details>
@@ -90,7 +90,7 @@
                         {% else %}
                             <span class="muted">Nikt jeszcze nie chce</span>
                         {% endif %}
-                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id'])) }}
+                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user) }}
                     </div>
                 </div>
             </details>

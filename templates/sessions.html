@@ -68,7 +68,7 @@
                                 </form>
                                 {% endif %}
 
-                                {{ macros.comment_thread(comments_by_session.get(s['id'], []), 'comments-session-' ~ s['id'], url_for('add_session_comment', session_id=s['id'])) }}
+                                {{ macros.comment_thread(comments_by_session.get(s['id'], []), 'comments-session-' ~ s['id'], url_for('add_session_comment', session_id=s['id']), 'delete_session_comment', user) }}
                             </div>
                         </div>
                     </details>

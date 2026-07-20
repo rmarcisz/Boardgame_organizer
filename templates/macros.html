@@ -16,15 +16,20 @@
 </div>
 {% endmacro %}
 
-{% macro comment_thread(comments, data_id, add_action) %}
+{% macro comment_thread(comments, data_id, add_action, delete_endpoint, current_user) %}
 <details class="comments" data-id="{{ data_id }}">
     <summary class="comment-toggle">💬 {{ comments|length }}</summary>
     <div class="comment-list">
         {% for comment in comments %}
-        <p class="comment">
+        <div class="comment">
             <span class="tag" style="background-color: {{ comment['author_name'] | name_color }};">{{ comment['author_name'] }}</span>
             {{ comment['text'] }}
-        </p>
+            {% if delete_endpoint and comment['author_name'] == current_user %}
+            <form method="post" action="{{ url_for(delete_endpoint, comment_id=comment['id']) }}" class="inline-form ajax-form comment-delete-form">
+                <button type="submit" class="link-btn danger comment-delete" title="Usuń komentarz" aria-label="Usuń komentarz">✕</button>
+            </form>
+            {% endif %}
+        </div>
         {% else %}
         <p class="muted">Brak komentarzy.</p>
         {% endfor %}
