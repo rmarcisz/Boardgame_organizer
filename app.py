@@ -218,19 +218,6 @@ def group_wishes(rows):
     return [groups[key] for key in order]
 
 
-def group_games(rows):
-    """Merge game rows that share a name and notes into one card with a list of owners."""
-    groups = {}
-    order = []
-    for row in rows:
-        key = (row["name"].strip().lower(), (row["notes"] or "").strip().lower())
-        if key not in groups:
-            groups[key] = {**row, "owners": []}
-            order.append(key)
-        groups[key]["owners"].append(row["owner_name"])
-    return [groups[key] for key in order]
-
-
 def merge_fulfilled_wishes(db):
     """A wish is already fulfilled if a taken game with the same name exists.
     Fold each such wisher into that game's interests and carry their wishlist
@@ -381,7 +368,12 @@ def games_view():
     db = get_db()
     name = current_name()
 
-    games = group_games(sort_by_name(query_all(db, "SELECT * FROM games")))
+    # Duplicates are allowed here - two owners each bringing "Catan" get two
+    # separate cards. Only a wishlist/taken-games name match gets merged,
+    # which happens once at startup in merge_fulfilled_wishes.
+    games = sort_by_name(query_all(db, "SELECT * FROM games"))
+    for row in games:
+        row["owners"] = [row["owner_name"]]
 
     interest_names = {}  # game_id -> list of names
     my_interests = set()
