@@ -139,7 +139,7 @@ main {
     .two-col-mobile .panel { padding: 0.75rem; }
     .two-col-mobile .panel h2 { font-size: 1.05rem; }
     .two-col-mobile .card-grid { grid-template-columns: 1fr; gap: 0.6rem; }
-    .two-col-mobile .card { padding: 0.2rem 0.5rem; gap: 0.3rem; }
+    .two-col-mobile .card { padding: 0.2rem 0.5rem; }
     .two-col-mobile .card-thumb { height: 90px; }
     .two-col-mobile .card h3,
     .two-col-mobile .card-name { font-size: 0.9rem; }
@@ -426,7 +426,6 @@ button:hover { background: var(--accent-dark); }
     background: #fffdfa;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
     min-width: 0;
 }
 
@@ -465,6 +464,10 @@ button:hover { background: var(--accent-dark); }
     flex-direction: column;
     gap: 0.4rem;
     padding-top: 0.5rem;
+}
+
+.card:not([open]) > .card-body {
+    display: none;
 }
 
 .tag {
