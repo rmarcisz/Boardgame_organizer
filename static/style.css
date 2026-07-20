@@ -546,6 +546,12 @@ button:hover { background: var(--accent-dark); }
 
 .comment-toggle::-webkit-details-marker { display: none; }
 
+.comment-toggle-open { display: none; }
+
+.comments[open] > .comment-toggle .comment-toggle-closed { display: none; }
+
+.comments[open] > .comment-toggle .comment-toggle-open { display: inline; }
+
 .comment-list {
     display: flex;
     flex-direction: column;

@@ -27,7 +27,10 @@
 
 {% macro comment_thread(comments, data_id, add_action, delete_endpoint, current_user) %}
 <details class="comments" data-id="{{ data_id }}">
-    <summary class="comment-toggle">💬 {{ comments|length }}</summary>
+    <summary class="comment-toggle">
+        <span class="comment-toggle-closed">💬 {{ comments|length }}</span>
+        <span class="comment-toggle-open">^ Zwiń czat ^</span>
+    </summary>
     <div class="comment-list">
         {% for comment in comments %}
         <div class="comment">
