@@ -248,7 +248,7 @@ button:hover { background: var(--accent-dark); }
     border: none;
     padding: 0;
     margin: 0;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     line-height: 1;
     color: var(--muted);
     flex-shrink: 0;
@@ -269,20 +269,21 @@ button:hover { background: var(--accent-dark); }
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.2rem;
+    gap: 0.1rem;
     flex-shrink: 0;
 }
 
 .card-owner-star .star-info { justify-content: center; }
 
 .owner-avatar {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.3rem;
+    height: 1.3rem;
     padding: 0;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 0.65rem;
     font-weight: 700;
 }
 
@@ -421,7 +422,7 @@ button:hover { background: var(--accent-dark); }
 .card {
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 0.6rem 1rem;
+    padding: 0.4rem 1rem;
     background: #fffdfa;
     display: flex;
     flex-direction: column;
@@ -468,7 +469,7 @@ button:hover { background: var(--accent-dark); }
 
 .tag {
     font-size: 0.7rem;
-    padding: 0.15rem 0.5rem;
+    padding: 0.08rem 0.5rem;
     border-radius: 999px;
     background: var(--accent);
     color: white;
