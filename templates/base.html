@@ -25,6 +25,9 @@
         <a href="{{ url_for('sessions_view') }}" class="tab {{ 'active' if request.endpoint == 'sessions_view' else '' }}">Rozgrywki</a>
         <a href="{{ url_for('szafa_view') }}" class="tab {{ 'active' if request.endpoint == 'szafa_view' else '' }}">Szafa</a>
         <a href="{{ url_for('account_view') }}" class="tab {{ 'active' if request.endpoint == 'account_view' else '' }}">Konto</a>
+        {% if is_admin %}
+        <a href="{{ url_for('log_view') }}" class="tab {{ 'active' if request.endpoint == 'log_view' else '' }}">Log</a>
+        {% endif %}
     </nav>
     {% endif %}
     <main>

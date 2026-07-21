@@ -139,6 +139,16 @@ def query_one(db, sql, params=()):
     return rows[0] if rows else None
 
 
+def log_action(db, action, details=""):
+    """Record a change for the admin-only activity log. Callers pass an
+    already-rendered detail string (game name, etc.) - queried right before
+    the row is deleted, since it won't exist to look up afterwards."""
+    db.execute(
+        "INSERT INTO activity_log (user_name, action, details) VALUES (?, ?, ?)",
+        (current_name(), action, details),
+    )
+
+
 def record_player(db, name):
     """Register a name's first appearance so it gets a stable color assignment."""
     db.execute("INSERT OR IGNORE INTO players (name) VALUES (?)", (name,))
@@ -479,6 +489,7 @@ def set_color():
         db.execute(
             "UPDATE players SET color = ? WHERE name = ?", (color, current_name())
         )
+        log_action(db, "set_color", f"Zmiana koloru na {color}")
         db.commit()
     return redirect(url_for("account_view"))
 
@@ -494,6 +505,7 @@ def set_lock():
             "UPDATE players SET pin_code = ? WHERE name = ?",
             (generate_password_hash(code), current_name()),
         )
+        log_action(db, "set_lock", "Zablokowano konto kodem")
         db.commit()
     return redirect(url_for("account_view"))
 
@@ -502,6 +514,7 @@ def set_lock():
 def unlock_account():
     db = get_db()
     db.execute("UPDATE players SET pin_code = NULL WHERE name = ?", (current_name(),))
+    log_action(db, "unlock_account", "Zdjęto blokadę konta")
     db.commit()
     return redirect(url_for("account_view"))
 
@@ -513,6 +526,10 @@ def toggle_unread_tracking():
     new_value = 0 if track_unread_enabled(player) else 1
     db.execute(
         "UPDATE players SET track_unread = ? WHERE name = ?", (new_value, current_name())
+    )
+    log_action(
+        db, "toggle_unread_tracking",
+        "Włączono oznaczanie nieprzeczytanych" if new_value else "Wyłączono oznaczanie nieprzeczytanych",
     )
     db.commit()
     return redirect(url_for("account_view"))
@@ -529,6 +546,7 @@ def add_game():
             "INSERT INTO games (name, notes, owner_name, image_url) VALUES (?, ?, ?, ?)",
             (name, notes, current_name(), image_url),
         )
+        log_action(db, "add_game", f"Dodano grę: {name}")
         db.commit()
     return redirect(url_for("games_view"))
 
@@ -550,6 +568,7 @@ def delete_game(game_id):
                     (game["name"], game["notes"], requester, game["image_url"]),
                 )
         db.execute("DELETE FROM games WHERE id = ?", (game_id,))
+        log_action(db, "delete_game", f"Usunięto grę: {game['name']} (właściciel: {game['owner_name']})")
         db.commit()
     return safe_redirect_back("account_view")
 
@@ -558,6 +577,7 @@ def delete_game(game_id):
 def toggle_interest(game_id):
     db = get_db()
     name = current_name()
+    game = query_one(db, "SELECT name FROM games WHERE id = ?", (game_id,))
     existing = query_one(
         db, "SELECT 1 FROM interests WHERE user_name = ? AND game_id = ?", (name, game_id)
     )
@@ -566,11 +586,13 @@ def toggle_interest(game_id):
             "DELETE FROM interests WHERE user_name = ? AND game_id = ?",
             (name, game_id),
         )
+        log_action(db, "toggle_interest", f"Zrezygnowano z zainteresowania grą: {game['name'] if game else game_id}")
     else:
         db.execute(
             "INSERT INTO interests (user_name, game_id) VALUES (?, ?)",
             (name, game_id),
         )
+        log_action(db, "toggle_interest", f"Zainteresowanie grą: {game['name'] if game else game_id}")
     db.commit()
     return redirect(url_for("games_view"))
 
@@ -584,6 +606,8 @@ def add_comment(game_id):
             "INSERT INTO comments (game_id, author_name, text) VALUES (?, ?, ?)",
             (game_id, current_name(), text),
         )
+        game = query_one(db, "SELECT name FROM games WHERE id = ?", (game_id,))
+        log_action(db, "add_comment", f"Komentarz do gry {game['name'] if game else game_id}: {text}")
         db.commit()
     return redirect(url_for("games_view"))
 
@@ -591,13 +615,17 @@ def add_comment(game_id):
 @app.route("/games/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_comment(comment_id):
     db = get_db()
-    if current_is_admin(db):
+    admin = current_is_admin(db)
+    comment = query_one(db, "SELECT * FROM comments WHERE id = ?", (comment_id,))
+    if admin:
         db.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
     else:
         db.execute(
             "DELETE FROM comments WHERE id = ? AND author_name = ?",
             (comment_id, current_name()),
         )
+    if comment and (admin or comment["author_name"] == current_name()):
+        log_action(db, "delete_comment", f"Usunięto komentarz autora {comment['author_name']}: {comment['text']}")
     db.commit()
     return redirect(url_for("games_view"))
 
@@ -624,6 +652,8 @@ def add_wish_comment(wish_id):
             "INSERT INTO wish_comments (wish_id, author_name, text) VALUES (?, ?, ?)",
             (wish_id, current_name(), text),
         )
+        wish = query_one(db, "SELECT name FROM wishes WHERE id = ?", (wish_id,))
+        log_action(db, "add_wish_comment", f"Komentarz do życzenia {wish['name'] if wish else wish_id}: {text}")
         db.commit()
     return redirect(url_for("games_view"))
 
@@ -631,13 +661,17 @@ def add_wish_comment(wish_id):
 @app.route("/wishes/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_wish_comment(comment_id):
     db = get_db()
-    if current_is_admin(db):
+    admin = current_is_admin(db)
+    comment = query_one(db, "SELECT * FROM wish_comments WHERE id = ?", (comment_id,))
+    if admin:
         db.execute("DELETE FROM wish_comments WHERE id = ?", (comment_id,))
     else:
         db.execute(
             "DELETE FROM wish_comments WHERE id = ? AND author_name = ?",
             (comment_id, current_name()),
         )
+    if comment and (admin or comment["author_name"] == current_name()):
+        log_action(db, "delete_wish_comment", f"Usunięto komentarz autora {comment['author_name']}: {comment['text']}")
     db.commit()
     return redirect(url_for("games_view"))
 
@@ -653,6 +687,7 @@ def add_wish():
             "INSERT INTO wishes (name, notes, requester_name, image_url) VALUES (?, ?, ?, ?)",
             (name, notes, current_name(), image_url),
         )
+        log_action(db, "add_wish", f"Dodano do listy życzeń: {name}")
         db.commit()
     return redirect(url_for("games_view"))
 
@@ -666,11 +701,17 @@ def delete_wish(wish_id):
         wish = query_one(db, "SELECT * FROM wishes WHERE id = ?", (wish_id,))
         if wish:
             db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
+            log_action(db, "delete_wish", f"Usunięto życzenie: {wish['name']} (zgłaszający: {wish['requester_name']})")
     else:
+        wish = query_one(
+            db, "SELECT * FROM wishes WHERE id = ? AND requester_name = ?", (wish_id, current_name())
+        )
         db.execute(
             "DELETE FROM wishes WHERE id = ? AND requester_name = ?",
             (wish_id, current_name()),
         )
+        if wish:
+            log_action(db, "delete_wish", f"Usunięto życzenie: {wish['name']}")
     db.commit()
     return safe_redirect_back("account_view")
 
@@ -691,6 +732,7 @@ def join_wish(wish_id):
                 "INSERT INTO wishes (name, notes, requester_name, image_url) VALUES (?, ?, ?, ?)",
                 (wish["name"], wish["notes"], name, wish["image_url"]),
             )
+            log_action(db, "join_wish", f"Dołączono do życzenia: {wish['name']}")
             db.commit()
     return redirect(url_for("games_view"))
 
@@ -731,6 +773,7 @@ def bring_wish(wish_id):
         )
 
         db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
+        log_action(db, "bring_wish", f"Spełniono życzenie: {wish['name']}")
         db.commit()
     return redirect(url_for("games_view"))
 
@@ -782,6 +825,7 @@ def add_session():
             "INSERT INTO sessions (game_name, session_time, notes, organizer_name) VALUES (?, ?, ?, ?)",
             (game_name, session_time, notes, current_name()),
         )
+        log_action(db, "add_session", f"Zaproponowano rozgrywkę: {game_name} @ {session_time}")
         db.commit()
     return redirect(url_for("sessions_view"))
 
@@ -790,6 +834,8 @@ def add_session():
 def toggle_session_join(session_id):
     db = get_db()
     name = current_name()
+    session_row = query_one(db, "SELECT game_name FROM sessions WHERE id = ?", (session_id,))
+    label = session_row["game_name"] if session_row else session_id
     existing = query_one(
         db,
         "SELECT 1 FROM session_joins WHERE user_name = ? AND session_id = ?",
@@ -800,11 +846,13 @@ def toggle_session_join(session_id):
             "DELETE FROM session_joins WHERE user_name = ? AND session_id = ?",
             (name, session_id),
         )
+        log_action(db, "toggle_session_join", f"Zrezygnowano z rozgrywki: {label}")
     else:
         db.execute(
             "INSERT INTO session_joins (user_name, session_id) VALUES (?, ?)",
             (name, session_id),
         )
+        log_action(db, "toggle_session_join", f"Dołączono do rozgrywki: {label}")
     db.commit()
     return redirect(url_for("sessions_view"))
 
@@ -813,12 +861,18 @@ def toggle_session_join(session_id):
 def delete_session(session_id):
     db = get_db()
     if current_is_admin(db):
+        session_row = query_one(db, "SELECT * FROM sessions WHERE id = ?", (session_id,))
         db.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
     else:
+        session_row = query_one(
+            db, "SELECT * FROM sessions WHERE id = ? AND organizer_name = ?", (session_id, current_name())
+        )
         db.execute(
             "DELETE FROM sessions WHERE id = ? AND organizer_name = ?",
             (session_id, current_name()),
         )
+    if session_row:
+        log_action(db, "delete_session", f"Odwołano rozgrywkę: {session_row['game_name']} (organizator: {session_row['organizer_name']})")
     db.commit()
     return redirect(url_for("sessions_view"))
 
@@ -832,6 +886,9 @@ def add_session_comment(session_id):
             "INSERT INTO session_comments (session_id, author_name, text) VALUES (?, ?, ?)",
             (session_id, current_name(), text),
         )
+        session_row = query_one(db, "SELECT game_name FROM sessions WHERE id = ?", (session_id,))
+        label = session_row["game_name"] if session_row else session_id
+        log_action(db, "add_session_comment", f"Komentarz do rozgrywki {label}: {text}")
         db.commit()
     return redirect(url_for("sessions_view"))
 
@@ -839,13 +896,17 @@ def add_session_comment(session_id):
 @app.route("/rozgrywki/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_session_comment(comment_id):
     db = get_db()
-    if current_is_admin(db):
+    admin = current_is_admin(db)
+    comment = query_one(db, "SELECT * FROM session_comments WHERE id = ?", (comment_id,))
+    if admin:
         db.execute("DELETE FROM session_comments WHERE id = ?", (comment_id,))
     else:
         db.execute(
             "DELETE FROM session_comments WHERE id = ? AND author_name = ?",
             (comment_id, current_name()),
         )
+    if comment and (admin or comment["author_name"] == current_name()):
+        log_action(db, "delete_session_comment", f"Usunięto komentarz autora {comment['author_name']}: {comment['text']}")
     db.commit()
     return redirect(url_for("sessions_view"))
 
@@ -897,6 +958,7 @@ def add_collection_game():
             "INSERT INTO collection_games (name, notes, owner_name) VALUES (?, ?, ?)",
             (name, notes, current_name()),
         )
+        log_action(db, "add_collection_game", f"Dodano do szafy: {name}")
         db.commit()
     return redirect(url_for("szafa_view"))
 
@@ -905,6 +967,8 @@ def add_collection_game():
 def toggle_collection_request(collection_game_id):
     db = get_db()
     name = current_name()
+    game_row = query_one(db, "SELECT name FROM collection_games WHERE id = ?", (collection_game_id,))
+    label = game_row["name"] if game_row else collection_game_id
     existing = query_one(
         db,
         "SELECT 1 FROM collection_requests WHERE user_name = ? AND collection_game_id = ?",
@@ -915,11 +979,13 @@ def toggle_collection_request(collection_game_id):
             "DELETE FROM collection_requests WHERE user_name = ? AND collection_game_id = ?",
             (name, collection_game_id),
         )
+        log_action(db, "toggle_collection_request", f"Zrezygnowano z gry z szafy: {label}")
     else:
         db.execute(
             "INSERT INTO collection_requests (user_name, collection_game_id) VALUES (?, ?)",
             (name, collection_game_id),
         )
+        log_action(db, "toggle_collection_request", f"Poproszono o grę z szafy: {label}")
     db.commit()
     return redirect(url_for("szafa_view"))
 
@@ -928,12 +994,19 @@ def toggle_collection_request(collection_game_id):
 def delete_collection_game(collection_game_id):
     db = get_db()
     if current_is_admin(db):
+        game_row = query_one(db, "SELECT * FROM collection_games WHERE id = ?", (collection_game_id,))
         db.execute("DELETE FROM collection_games WHERE id = ?", (collection_game_id,))
     else:
+        game_row = query_one(
+            db, "SELECT * FROM collection_games WHERE id = ? AND owner_name = ?",
+            (collection_game_id, current_name()),
+        )
         db.execute(
             "DELETE FROM collection_games WHERE id = ? AND owner_name = ?",
             (collection_game_id, current_name()),
         )
+    if game_row:
+        log_action(db, "delete_collection_game", f"Usunięto z szafy: {game_row['name']} (właściciel: {game_row['owner_name']})")
     db.commit()
     return redirect(url_for("szafa_view"))
 
@@ -947,6 +1020,9 @@ def add_collection_comment(collection_game_id):
             "INSERT INTO collection_comments (collection_game_id, author_name, text) VALUES (?, ?, ?)",
             (collection_game_id, current_name(), text),
         )
+        game_row = query_one(db, "SELECT name FROM collection_games WHERE id = ?", (collection_game_id,))
+        label = game_row["name"] if game_row else collection_game_id
+        log_action(db, "add_collection_comment", f"Komentarz do gry z szafy {label}: {text}")
         db.commit()
     return redirect(url_for("szafa_view"))
 
@@ -954,15 +1030,28 @@ def add_collection_comment(collection_game_id):
 @app.route("/szafa/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_collection_comment(comment_id):
     db = get_db()
-    if current_is_admin(db):
+    admin = current_is_admin(db)
+    comment = query_one(db, "SELECT * FROM collection_comments WHERE id = ?", (comment_id,))
+    if admin:
         db.execute("DELETE FROM collection_comments WHERE id = ?", (comment_id,))
     else:
         db.execute(
             "DELETE FROM collection_comments WHERE id = ? AND author_name = ?",
             (comment_id, current_name()),
         )
+    if comment and (admin or comment["author_name"] == current_name()):
+        log_action(db, "delete_collection_comment", f"Usunięto komentarz autora {comment['author_name']}: {comment['text']}")
     db.commit()
     return redirect(url_for("szafa_view"))
+
+
+@app.route("/log")
+def log_view():
+    db = get_db()
+    if not current_is_admin(db):
+        return redirect(url_for("games_view"))
+    entries = query_all(db, "SELECT * FROM activity_log ORDER BY id DESC LIMIT 500")
+    return render_template("log.html", user=current_name(), entries=entries)
 
 
 init_db()

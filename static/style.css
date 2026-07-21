@@ -628,6 +628,37 @@ button:hover { background: var(--accent-dark); }
 
 .account-panel { max-width: 420px; }
 
+.log-panel { max-width: 720px; }
+
+.log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.log-entry {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-entry-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.log-time {
+    font-size: 0.85rem;
+}
+
+.log-details {
+    margin: 0.25rem 0 0;
+}
+
 .color-grid {
     display: flex;
     flex-wrap: wrap;

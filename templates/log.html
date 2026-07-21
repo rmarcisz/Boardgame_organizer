@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Log – Zgrani 2026 - planszówkowy organizer{% endblock %}
+{% block content %}
+
+<section class="panel log-panel">
+    <h2>Log zmian</h2>
+
+    {% if not entries %}
+    <p class="muted">Brak zapisanych zmian.</p>
+    {% else %}
+    <ul class="log-list">
+        {% for e in entries %}
+        <li class="log-entry">
+            <div class="log-entry-head">
+                <span class="tag" style="background-color: {{ e['user_name'] | name_color }};">{{ e['user_name'] }}</span>
+                <span class="muted log-time">{{ e['created_at'] }}</span>
+            </div>
+            <p class="log-details">{{ e['details'] }}</p>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</section>
+
+{% endblock %}
