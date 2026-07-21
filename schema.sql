@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS players (
     name TEXT NOT NULL UNIQUE,
     color TEXT,
     pin_code TEXT,
-    track_unread INTEGER DEFAULT 1
+    track_unread INTEGER DEFAULT 1,
+    is_admin INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS comments (

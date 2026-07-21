@@ -3,6 +3,7 @@ import os
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Flask, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -284,11 +285,21 @@ def init_db():
         ("players", "color", "TEXT"),
         ("players", "pin_code", "TEXT"),
         ("players", "track_unread", "INTEGER DEFAULT 1"),
+        ("players", "is_admin", "INTEGER DEFAULT 0"),
     ]:
         try:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
         except Exception:
             pass  # column already exists
+    db.commit()
+    # Admin accounts are granted here rather than through the UI - the only
+    # one right now is Radek. Upsert so this works whether he's logged in
+    # before or not, without touching admin flags set by hand for anyone else.
+    db.execute(
+        "INSERT INTO players (name, is_admin) VALUES (?, 1) "
+        "ON CONFLICT(name) DO UPDATE SET is_admin = 1",
+        ("Radek",),
+    )
     db.commit()
     merge_fulfilled_wishes(db)
     # Backfill players from names already present in existing trip data, ordered
@@ -311,6 +322,31 @@ def init_db():
 
 def current_name():
     return session.get("name")
+
+
+def is_admin_name(db, name):
+    if not name:
+        return False
+    row = query_one(db, "SELECT is_admin FROM players WHERE name = ?", (name,))
+    return bool(row and row["is_admin"])
+
+
+def current_is_admin(db):
+    return is_admin_name(db, current_name())
+
+
+@app.context_processor
+def inject_is_admin():
+    return {"is_admin": current_is_admin(get_db())}
+
+
+def safe_redirect_back(fallback_endpoint):
+    """Return to whatever page the delete was triggered from (games.html vs.
+    account.html both use these routes), but never redirect off-site."""
+    ref = request.referrer
+    if ref and urlparse(ref).netloc == request.host:
+        return redirect(ref)
+    return redirect(url_for(fallback_endpoint))
 
 
 @app.before_request
@@ -500,9 +536,12 @@ def add_game():
 @app.route("/games/<int:game_id>/delete", methods=["POST"])
 def delete_game(game_id):
     db = get_db()
-    game = query_one(
-        db, "SELECT * FROM games WHERE id = ? AND owner_name = ?", (game_id, current_name())
-    )
+    if current_is_admin(db):
+        game = query_one(db, "SELECT * FROM games WHERE id = ?", (game_id,))
+    else:
+        game = query_one(
+            db, "SELECT * FROM games WHERE id = ? AND owner_name = ?", (game_id, current_name())
+        )
     if game:
         if game["origin_wish_requester"]:
             for requester in game["origin_wish_requester"].split(","):
@@ -512,7 +551,7 @@ def delete_game(game_id):
                 )
         db.execute("DELETE FROM games WHERE id = ?", (game_id,))
         db.commit()
-    return redirect(url_for("account_view"))
+    return safe_redirect_back("account_view")
 
 
 @app.route("/games/<int:game_id>/interest", methods=["POST"])
@@ -552,10 +591,13 @@ def add_comment(game_id):
 @app.route("/games/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_comment(comment_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM comments WHERE id = ? AND author_name = ?",
-        (comment_id, current_name()),
-    )
+    if current_is_admin(db):
+        db.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
+    else:
+        db.execute(
+            "DELETE FROM comments WHERE id = ? AND author_name = ?",
+            (comment_id, current_name()),
+        )
     db.commit()
     return redirect(url_for("games_view"))
 
@@ -589,10 +631,13 @@ def add_wish_comment(wish_id):
 @app.route("/wishes/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_wish_comment(comment_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM wish_comments WHERE id = ? AND author_name = ?",
-        (comment_id, current_name()),
-    )
+    if current_is_admin(db):
+        db.execute("DELETE FROM wish_comments WHERE id = ?", (comment_id,))
+    else:
+        db.execute(
+            "DELETE FROM wish_comments WHERE id = ? AND author_name = ?",
+            (comment_id, current_name()),
+        )
     db.commit()
     return redirect(url_for("games_view"))
 
@@ -615,12 +660,19 @@ def add_wish():
 @app.route("/wishes/<int:wish_id>/delete", methods=["POST"])
 def delete_wish(wish_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM wishes WHERE id = ? AND requester_name = ?",
-        (wish_id, current_name()),
-    )
+    if current_is_admin(db):
+        # A wish "card" is really one row per requester sharing a name -
+        # admin delete removes the whole card, same as bring_wish does.
+        wish = query_one(db, "SELECT * FROM wishes WHERE id = ?", (wish_id,))
+        if wish:
+            db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
+    else:
+        db.execute(
+            "DELETE FROM wishes WHERE id = ? AND requester_name = ?",
+            (wish_id, current_name()),
+        )
     db.commit()
-    return redirect(url_for("account_view"))
+    return safe_redirect_back("account_view")
 
 
 @app.route("/wishes/<int:wish_id>/join", methods=["POST"])
@@ -760,10 +812,13 @@ def toggle_session_join(session_id):
 @app.route("/rozgrywki/<int:session_id>/delete", methods=["POST"])
 def delete_session(session_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM sessions WHERE id = ? AND organizer_name = ?",
-        (session_id, current_name()),
-    )
+    if current_is_admin(db):
+        db.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    else:
+        db.execute(
+            "DELETE FROM sessions WHERE id = ? AND organizer_name = ?",
+            (session_id, current_name()),
+        )
     db.commit()
     return redirect(url_for("sessions_view"))
 
@@ -784,10 +839,13 @@ def add_session_comment(session_id):
 @app.route("/rozgrywki/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_session_comment(comment_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM session_comments WHERE id = ? AND author_name = ?",
-        (comment_id, current_name()),
-    )
+    if current_is_admin(db):
+        db.execute("DELETE FROM session_comments WHERE id = ?", (comment_id,))
+    else:
+        db.execute(
+            "DELETE FROM session_comments WHERE id = ? AND author_name = ?",
+            (comment_id, current_name()),
+        )
     db.commit()
     return redirect(url_for("sessions_view"))
 
@@ -869,10 +927,13 @@ def toggle_collection_request(collection_game_id):
 @app.route("/szafa/<int:collection_game_id>/delete", methods=["POST"])
 def delete_collection_game(collection_game_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM collection_games WHERE id = ? AND owner_name = ?",
-        (collection_game_id, current_name()),
-    )
+    if current_is_admin(db):
+        db.execute("DELETE FROM collection_games WHERE id = ?", (collection_game_id,))
+    else:
+        db.execute(
+            "DELETE FROM collection_games WHERE id = ? AND owner_name = ?",
+            (collection_game_id, current_name()),
+        )
     db.commit()
     return redirect(url_for("szafa_view"))
 
@@ -893,10 +954,13 @@ def add_collection_comment(collection_game_id):
 @app.route("/szafa/comments/<int:comment_id>/delete", methods=["POST"])
 def delete_collection_comment(comment_id):
     db = get_db()
-    db.execute(
-        "DELETE FROM collection_comments WHERE id = ? AND author_name = ?",
-        (comment_id, current_name()),
-    )
+    if current_is_admin(db):
+        db.execute("DELETE FROM collection_comments WHERE id = ?", (comment_id,))
+    else:
+        db.execute(
+            "DELETE FROM collection_comments WHERE id = ? AND author_name = ?",
+            (comment_id, current_name()),
+        )
     db.commit()
     return redirect(url_for("szafa_view"))
 

@@ -70,8 +70,13 @@
                             <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
                             {% endfor %}
                         {% endif %}
+                        {% if is_admin and user not in game['owners'] %}
+                        <form method="post" action="{{ url_for('delete_game', game_id=game['id']) }}" class="inline-form ajax-form">
+                            <button type="submit" class="link-btn danger">Usuń</button>
+                        </form>
+                        {% endif %}
 
-                        {{ macros.comment_thread(comments_by_game.get(game['id'], []), 'comments-game-' ~ game['id'], url_for('add_comment', game_id=game['id']), 'delete_comment', user) }}
+                        {{ macros.comment_thread(comments_by_game.get(game['id'], []), 'comments-game-' ~ game['id'], url_for('add_comment', game_id=game['id']), 'delete_comment', user, is_admin) }}
                     </div>
                 </div>
             </details>
@@ -113,7 +118,12 @@
                         {% for r in requesters %}
                         <span class="tag" style="background-color: {{ r | name_color }};">{{ r }}</span>
                         {% endfor %}
-                        {{ macros.comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id']), 'delete_wish_comment', user) }}
+                        {% if is_admin and user not in requesters %}
+                        <form method="post" action="{{ url_for('delete_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
+                            <button type="submit" class="link-btn danger">Usuń</button>
+                        </form>
+                        {% endif %}
+                        {{ macros.comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id']), 'delete_wish_comment', user, is_admin) }}
                     </div>
                 </div>
             </details>

@@ -67,8 +67,13 @@
                                     <button type="submit">Dołączam!</button>
                                 </form>
                                 {% endif %}
+                                {% if is_admin and user != s['organizer_name'] %}
+                                <form method="post" action="{{ url_for('delete_session', session_id=s['id']) }}" class="inline-form">
+                                    <button type="submit" class="link-btn danger">Odwołaj</button>
+                                </form>
+                                {% endif %}
 
-                                {{ macros.comment_thread(comments_by_session.get(s['id'], []), 'comments-session-' ~ s['id'], url_for('add_session_comment', session_id=s['id']), 'delete_session_comment', user) }}
+                                {{ macros.comment_thread(comments_by_session.get(s['id'], []), 'comments-session-' ~ s['id'], url_for('add_session_comment', session_id=s['id']), 'delete_session_comment', user, is_admin) }}
                             </div>
                         </div>
                     </details>

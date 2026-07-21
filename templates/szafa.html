@@ -46,7 +46,7 @@
                         {% else %}
                             <span class="star-btn muted" aria-hidden="true">☆</span>
                         {% endif %}
-                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user) }}
+                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user, is_admin) }}
                     </div>
                 </div>
             </details>
@@ -86,7 +86,12 @@
                         {% for person in requesters %}
                         <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
                         {% endfor %}
-                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user) }}
+                        {% if is_admin %}
+                        <form method="post" action="{{ url_for('delete_collection_game', collection_game_id=g['id']) }}" class="inline-form ajax-form">
+                            <button type="submit" class="link-btn danger">Usuń z szafy</button>
+                        </form>
+                        {% endif %}
+                        {{ macros.comment_thread(comments_by_collection.get(g['id'], []), 'comments-collection-' ~ g['id'], url_for('add_collection_comment', collection_game_id=g['id']), 'delete_collection_comment', user, is_admin) }}
                     </div>
                 </div>
             </details>

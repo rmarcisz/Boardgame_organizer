@@ -25,7 +25,7 @@
 {% endif %}
 {% endmacro %}
 
-{% macro comment_thread(comments, data_id, add_action, delete_endpoint, current_user) %}
+{% macro comment_thread(comments, data_id, add_action, delete_endpoint, current_user, is_admin=False) %}
 <details class="comments" data-id="{{ data_id }}">
     <summary class="comment-toggle">
         <span class="comment-toggle-closed">💬 {{ comments|length }}</span>
@@ -36,7 +36,7 @@
         <div class="comment">
             <span class="tag" style="background-color: {{ comment['author_name'] | name_color }};">{{ comment['author_name'] }}</span>
             {{ comment['text'] }}
-            {% if delete_endpoint and comment['author_name'] == current_user %}
+            {% if delete_endpoint and (comment['author_name'] == current_user or is_admin) %}
             <form method="post" action="{{ url_for(delete_endpoint, comment_id=comment['id']) }}" class="inline-form ajax-form comment-delete-form">
                 <button type="submit" class="link-btn danger comment-delete" title="Usuń komentarz" aria-label="Usuń komentarz">✕</button>
             </form>
