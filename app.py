@@ -1,11 +1,13 @@
 import hashlib
 import os
 import sqlite3
+import xml.etree.ElementTree as ET
 from datetime import date, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, flash, g, redirect, render_template, request, session, url_for
+import requests
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).parent
@@ -14,6 +16,14 @@ SCHEMA_PATH = BASE_DIR / "schema.sql"
 
 TURSO_URL = os.environ.get("TURSO_DATABASE_URL")
 TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
+
+# BoardGameGeek's classic XML API now rejects anonymous requests - this token
+# was issued at https://boardgamegeek.com/application/7251/tokens and goes in
+# an Authorization: Bearer header (confirmed by hand; BGG doesn't publicly
+# document the new auth requirement anywhere else).
+BGG_TOKEN = os.environ.get("BGG_ZGRANI")
+BGG_SEARCH_URL = "https://boardgamegeek.com/xmlapi2/search"
+BGG_THING_URL = "https://boardgamegeek.com/xmlapi2/thing"
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
@@ -72,6 +82,49 @@ NAME_COLORS = [
 
 def clamp(text, max_length):
     return text.strip()[:max_length]
+
+
+def bgg_get(url, params):
+    headers = {"Authorization": f"Bearer {BGG_TOKEN}"} if BGG_TOKEN else {}
+    response = requests.get(url, params=params, headers=headers, timeout=5)
+    response.raise_for_status()
+    return ET.fromstring(response.content)
+
+
+def bgg_search(query):
+    """Board games on BGG matching `query`, exact-name matches first."""
+    root = bgg_get(BGG_SEARCH_URL, {"query": query, "type": "boardgame"})
+    results = []
+    for item in root.findall("item"):
+        name_el = item.find("name")
+        if name_el is None or not name_el.get("value"):
+            continue
+        year_el = item.find("yearpublished")
+        results.append({
+            "id": item.get("id"),
+            "name": name_el.get("value"),
+            "year": year_el.get("value") if year_el is not None else None,
+        })
+    query_lower = query.strip().lower()
+    results.sort(key=lambda r: r["name"].lower() != query_lower)
+    return results[:8]
+
+
+def bgg_thing(bgg_id):
+    """Box art + canonical name for one BGG game id, or None if it doesn't exist."""
+    root = bgg_get(BGG_THING_URL, {"id": bgg_id})
+    item = root.find("item")
+    if item is None:
+        return None
+    image_el = item.find("image")
+    primary_name = next(
+        (n.get("value") for n in item.findall("name") if n.get("type") == "primary"), None
+    )
+    return {
+        "id": str(bgg_id),
+        "name": primary_name,
+        "image": image_el.text if image_el is not None else None,
+    }
 
 
 class _TursoCursor:
@@ -535,16 +588,38 @@ def toggle_unread_tracking():
     return redirect(url_for("account_view"))
 
 
+@app.route("/bgg/search")
+def bgg_search_route():
+    query = request.args.get("q", "").strip()
+    if not query or not BGG_TOKEN:
+        return jsonify([])
+    try:
+        return jsonify(bgg_search(query))
+    except (requests.RequestException, ET.ParseError):
+        return jsonify([])
+
+
+@app.route("/bgg/thing/<int:bgg_id>")
+def bgg_thing_route(bgg_id):
+    if not BGG_TOKEN:
+        return jsonify(None)
+    try:
+        return jsonify(bgg_thing(bgg_id))
+    except (requests.RequestException, ET.ParseError):
+        return jsonify(None)
+
+
 @app.route("/games/add", methods=["POST"])
 def add_game():
     name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
     notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
     image_url = request.form.get("image_url", "").strip() or None
+    bgg_id = request.form.get("bgg_id", "").strip() or None
     if name:
         db = get_db()
         db.execute(
-            "INSERT INTO games (name, notes, owner_name, image_url) VALUES (?, ?, ?, ?)",
-            (name, notes, current_name(), image_url),
+            "INSERT INTO games (name, notes, owner_name, image_url, bgg_id) VALUES (?, ?, ?, ?, ?)",
+            (name, notes, current_name(), image_url, bgg_id),
         )
         log_action(db, "add_game", f"Dodano grę: {name}")
         db.commit()
@@ -564,8 +639,8 @@ def delete_game(game_id):
         if game["origin_wish_requester"]:
             for requester in game["origin_wish_requester"].split(","):
                 db.execute(
-                    "INSERT INTO wishes (name, notes, requester_name, image_url) VALUES (?, ?, ?, ?)",
-                    (game["name"], game["notes"], requester, game["image_url"]),
+                    "INSERT INTO wishes (name, notes, requester_name, image_url, bgg_id) VALUES (?, ?, ?, ?, ?)",
+                    (game["name"], game["notes"], requester, game["image_url"], game["bgg_id"]),
                 )
         db.execute("DELETE FROM games WHERE id = ?", (game_id,))
         log_action(db, "delete_game", f"Usunięto grę: {game['name']} (właściciel: {game['owner_name']})")
@@ -681,11 +756,12 @@ def add_wish():
     name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
     notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
     image_url = request.form.get("image_url", "").strip() or None
+    bgg_id = request.form.get("bgg_id", "").strip() or None
     if name:
         db = get_db()
         db.execute(
-            "INSERT INTO wishes (name, notes, requester_name, image_url) VALUES (?, ?, ?, ?)",
-            (name, notes, current_name(), image_url),
+            "INSERT INTO wishes (name, notes, requester_name, image_url, bgg_id) VALUES (?, ?, ?, ?, ?)",
+            (name, notes, current_name(), image_url, bgg_id),
         )
         log_action(db, "add_wish", f"Dodano do listy życzeń: {name}")
         db.commit()
@@ -729,8 +805,8 @@ def join_wish(wish_id):
         )
         if not already:
             db.execute(
-                "INSERT INTO wishes (name, notes, requester_name, image_url) VALUES (?, ?, ?, ?)",
-                (wish["name"], wish["notes"], name, wish["image_url"]),
+                "INSERT INTO wishes (name, notes, requester_name, image_url, bgg_id) VALUES (?, ?, ?, ?, ?)",
+                (wish["name"], wish["notes"], name, wish["image_url"], wish["bgg_id"]),
             )
             log_action(db, "join_wish", f"Dołączono do życzenia: {wish['name']}")
             db.commit()
@@ -749,8 +825,8 @@ def bring_wish(wish_id):
         requester_names = [row["requester_name"] for row in same_name]
         requesters = ",".join(requester_names)
         cur = db.execute(
-            "INSERT INTO games (name, notes, owner_name, image_url, origin_wish_requester) VALUES (?, ?, ?, ?, ?)",
-            (wish["name"], wish["notes"], current_name(), wish["image_url"], requesters),
+            "INSERT INTO games (name, notes, owner_name, image_url, bgg_id, origin_wish_requester) VALUES (?, ?, ?, ?, ?, ?)",
+            (wish["name"], wish["notes"], current_name(), wish["image_url"], wish["bgg_id"], requesters),
         )
         game_id = cur.lastrowid
         # The original wishers are automatically interested in the game that fulfills their wish.

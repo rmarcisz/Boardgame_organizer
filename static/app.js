@@ -260,3 +260,74 @@ document.addEventListener("focusout", function (event) {
     var box = event.target.parentElement.querySelector(".game-suggestions");
     if (box) box.innerHTML = "";
 });
+
+// BoardGameGeek-backed typeahead for the "add game" / "add to wishlist" name
+// fields: as you type, search BGG so picking a result locks in its bgg_id and
+// box art (hidden inputs) instead of leaving the card without cover art.
+var bggSearchTimer = null;
+var bggSearchSeq = 0;
+
+function clearBggSelection(form) {
+    var idInput = form.querySelector(".bgg-id-input");
+    var imageInput = form.querySelector(".bgg-image-input");
+    if (idInput) idInput.value = "";
+    if (imageInput) imageInput.value = "";
+}
+
+function selectBggResult(form, input, box, result) {
+    input.value = result.name;
+    box.innerHTML = "";
+    var idInput = form.querySelector(".bgg-id-input");
+    var imageInput = form.querySelector(".bgg-image-input");
+    if (idInput) idInput.value = result.id;
+    fetch("/bgg/thing/" + result.id, { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (thing) {
+            if (imageInput && thing && thing.image) imageInput.value = thing.image;
+        })
+        .catch(function () {});
+}
+
+function renderBggSuggestions(input) {
+    var box = input.parentElement.querySelector(".game-suggestions");
+    var form = input.closest("form");
+    if (!box || !form) return;
+    var query = input.value.trim();
+    box.innerHTML = "";
+    if (!query) return;
+
+    var seq = ++bggSearchSeq;
+    fetch("/bgg/search?q=" + encodeURIComponent(query), { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (results) {
+            // A newer keystroke already fired another search - drop this stale one.
+            if (seq !== bggSearchSeq) return;
+            box.innerHTML = "";
+            results.forEach(function (result) {
+                var btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "game-suggestion";
+                btn.textContent = result.year ? result.name + " (" + result.year + ")" : result.name;
+                btn.addEventListener("mousedown", function (event) {
+                    event.preventDefault();
+                    selectBggResult(form, input, box, result);
+                });
+                box.appendChild(btn);
+            });
+        })
+        .catch(function () {});
+}
+
+document.addEventListener("input", function (event) {
+    if (!event.target.matches(".bgg-name-input")) return;
+    var input = event.target;
+    clearBggSelection(input.closest("form"));
+    clearTimeout(bggSearchTimer);
+    bggSearchTimer = setTimeout(function () { renderBggSuggestions(input); }, 300);
+});
+
+document.addEventListener("focusout", function (event) {
+    if (!event.target.matches(".bgg-name-input")) return;
+    var box = event.target.parentElement.querySelector(".game-suggestions");
+    if (box) box.innerHTML = "";
+});
