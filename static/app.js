@@ -301,6 +301,25 @@ function selectBggResult(input, box, result) {
         .catch(function () {});
 }
 
+// Not every game is on BGG (or worth looking up) - a "Dodaj jako: ..." option
+// at the bottom of the list lets the typed text stand on its own instead of
+// forcing a BGG match, mirroring the same option the local KNOWN_GAMES
+// typeahead already offers (see addGameSuggestion above).
+function addFreetextBggOption(box, input, query) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "game-suggestion game-suggestion-add";
+    btn.textContent = "Dodaj jako: " + query;
+    btn.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+        // The typed text is already the input's value - just make sure no
+        // stale bgg_id/image from an earlier pick tags along with it.
+        clearBggSelection(input);
+        box.innerHTML = "";
+    });
+    box.appendChild(btn);
+}
+
 function renderBggSuggestions(input) {
     var box = input.parentElement.querySelector(".game-suggestions");
     if (!box) return;
@@ -326,8 +345,18 @@ function renderBggSuggestions(input) {
                 });
                 box.appendChild(btn);
             });
+
+            // Skip it when a result already matches the typed text exactly -
+            // clicking that suggestion above already covers this case.
+            var exactMatch = results.some(function (r) { return r.name.toLowerCase() === query.toLowerCase(); });
+            if (!exactMatch) addFreetextBggOption(box, input, query);
         })
-        .catch(function () {});
+        .catch(function () {
+            // Search failed (offline, BGG down, no token, ...) - freetext is
+            // the only option left, so offer it instead of a dead end.
+            box.innerHTML = "";
+            addFreetextBggOption(box, input, query);
+        });
 }
 
 // A "Dodatek" field only offers expansions BGG lists under the game's own
