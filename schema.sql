@@ -39,7 +39,14 @@ CREATE TABLE IF NOT EXISTS players (
     color TEXT,
     pin_code TEXT,
     track_unread INTEGER DEFAULT 1,
-    is_admin INTEGER DEFAULT 0
+    is_admin INTEGER DEFAULT 0,
+    email TEXT,
+    password_hash TEXT,
+    email_verified INTEGER DEFAULT 0,
+    email_verify_token TEXT,
+    email_verify_expires TEXT,
+    password_reset_token TEXT,
+    password_reset_expires TEXT
 );
 
 CREATE TABLE IF NOT EXISTS comments (

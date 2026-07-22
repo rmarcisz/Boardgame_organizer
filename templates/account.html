@@ -34,6 +34,32 @@
 </section>
 
 <section class="panel account-panel">
+    <h2>Zabezpieczenie konta</h2>
+
+    {% if player and player['password_hash'] %}
+        {% if player['email_verified'] %}
+        <p class="muted">Konto zabezpieczone hasłem, e-mail <strong>{{ player['email'] }}</strong> potwierdzony. ✅</p>
+        {% else %}
+        <p class="muted">Konto zabezpieczone hasłem. E-mail <strong>{{ player['email'] }}</strong> nie jest jeszcze potwierdzony - sprawdź skrzynkę.</p>
+        <form method="post" action="{{ url_for('resend_verification') }}" class="inline-form">
+            <button type="submit" class="link-btn">Wyślij ponownie e-mail weryfikacyjny</button>
+        </form>
+        {% endif %}
+    {% else %}
+    <p class="muted">To imię nie jest jeszcze zabezpieczone e-mailem i hasłem - każdy, kto je zna, może się na nie zalogować (chyba że jest zablokowane kodem powyżej). Dodaj e-mail i hasło, aby to zmienić.</p>
+    <form method="post" action="{{ url_for('secure_account') }}" class="account-form">
+        <label for="secure-email">E-mail</label>
+        <input type="email" id="secure-email" name="email" maxlength="120" required>
+        <label for="secure-password">Hasło (min. 8 znaków)</label>
+        <input type="password" id="secure-password" name="password" required>
+        <label for="secure-confirm">Powtórz hasło</label>
+        <input type="password" id="secure-confirm" name="confirm" required>
+        <button type="submit">Zabezpiecz konto</button>
+    </form>
+    {% endif %}
+</section>
+
+<section class="panel account-panel">
     <h2>Gry, które zabierasz</h2>
 
     {% if not my_games %}

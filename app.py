@@ -1,8 +1,11 @@
 import hashlib
 import os
+import secrets
+import smtplib
 import sqlite3
 import xml.etree.ElementTree as ET
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from email.message import EmailMessage
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -25,6 +28,13 @@ BGG_TOKEN = os.environ.get("BGG_ZGRANI")
 BGG_SEARCH_URL = "https://boardgamegeek.com/xmlapi2/search"
 BGG_THING_URL = "https://boardgamegeek.com/xmlapi2/thing"
 
+SMTP_HOST = os.environ.get("SMTP_HOST")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USERNAME)
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  # 64KB - plenty for these small text forms
@@ -35,6 +45,8 @@ NOTES_MAX_LENGTH = 300
 COMMENT_MAX_LENGTH = 255
 SESSION_TIME_MAX_LENGTH = 32
 LANGUAGE_MAX_LENGTH = 50
+EMAIL_MAX_LENGTH = 120
+PASSWORD_MIN_LENGTH = 8
 
 LANGUAGE_FLAGS = {"Angielski": "🇬🇧", "Polski": "🇵🇱", "Niemiecki": "🇩🇪"}
 
@@ -140,6 +152,55 @@ def bgg_thing(bgg_id):
     }
 
 
+def send_email(to_addr, subject, body):
+    """Best-effort transactional email over plain SMTP. Silently skips (logging
+    to stderr) when SMTP isn't configured, e.g. in local dev, rather than
+    raising - a missing mail provider shouldn't break registration/reset."""
+    if not (SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD):
+        print(f"[email skipped - SMTP not configured] to={to_addr} subject={subject!r}")
+        return
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_addr
+    msg.set_content(body)
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+
+
+def new_token():
+    return secrets.token_urlsafe(32)
+
+
+def send_verify_email(to_addr, name, token):
+    link = f"{APP_BASE_URL}{url_for('verify_email', token=token)}"
+    send_email(
+        to_addr,
+        "Potwierdź adres e-mail – Zgrani 2026",
+        f"Cześć {name},\n\n"
+        f"Potwierdź swój adres e-mail, klikając w poniższy link (ważny 24h):\n{link}\n\n"
+        "Jeśli to nie Ty zakładałeś/aś konto, zignoruj tę wiadomość.",
+    )
+
+
+def send_reset_email(to_addr, name, token):
+    link = f"{APP_BASE_URL}{url_for('reset_password', token=token)}"
+    send_email(
+        to_addr,
+        "Reset hasła – Zgrani 2026",
+        f"Cześć {name},\n\n"
+        f"Kliknij w poniższy link, aby ustawić nowe hasło (ważny 1h):\n{link}\n\n"
+        "Jeśli to nie Ty prosiłeś/aś o reset hasła, zignoruj tę wiadomość.",
+    )
+
+
 class _TursoCursor:
     """Adapts a libsql_client ResultSet to the sqlite3 cursor shape (.description/.fetchall)."""
 
@@ -205,13 +266,15 @@ def query_one(db, sql, params=()):
     return rows[0] if rows else None
 
 
-def log_action(db, action, details=""):
+def log_action(db, action, details="", actor=None):
     """Record a change for the admin-only activity log. Callers pass an
     already-rendered detail string (game name, etc.) - queried right before
-    the row is deleted, since it won't exist to look up afterwards."""
+    the row is deleted, since it won't exist to look up afterwards. `actor`
+    overrides current_name() for actions that happen before a session exists
+    (registering, verifying an email, resetting a password)."""
     db.execute(
         "INSERT INTO activity_log (user_name, action, details) VALUES (?, ?, ?)",
-        (current_name(), action, details),
+        (actor or current_name(), action, details),
     )
 
 
@@ -339,6 +402,13 @@ def init_db():
         ("players", "track_unread", "INTEGER DEFAULT 1"),
         ("players", "is_admin", "INTEGER DEFAULT 0"),
         ("games", "language", "TEXT"),
+        ("players", "email", "TEXT"),
+        ("players", "password_hash", "TEXT"),
+        ("players", "email_verified", "INTEGER DEFAULT 0"),
+        ("players", "email_verify_token", "TEXT"),
+        ("players", "email_verify_expires", "TEXT"),
+        ("players", "password_reset_token", "TEXT"),
+        ("players", "password_reset_expires", "TEXT"),
     ]:
         try:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
@@ -403,30 +473,52 @@ def safe_redirect_back(fallback_endpoint):
 
 @app.before_request
 def require_login():
-    if request.endpoint in ("login", "static"):
+    if request.endpoint in (
+        "login", "static", "register", "verify_email", "forgot_password", "reset_password",
+    ):
         return None
     if current_name() is None:
         return redirect(url_for("login"))
 
 
+def find_player_by_identifier(db, identifier):
+    """Look up a player by name first, then by email if the identifier looks
+    like one - lets the same login field take either. Python's .lower() is
+    used instead of SQL COLLATE NOCASE because SQLite's builtin NOCASE only
+    folds ASCII a-z, not Polish diacritics (Ł/ł, Ż/ż, ...)."""
+    players = query_all(db, "SELECT * FROM players")
+    player = next((p for p in players if p["name"].lower() == identifier.lower()), None)
+    if not player and "@" in identifier:
+        player = next(
+            (p for p in players if p["email"] and p["email"].lower() == identifier.lower()), None
+        )
+    return player
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        name = clamp(request.form.get("name", ""), NAME_MAX_LENGTH)
+        identifier = clamp(request.form.get("name", ""), max(NAME_MAX_LENGTH, EMAIL_MAX_LENGTH))
         code = request.form.get("code", "").strip()
-        if not name:
-            return render_template("login.html", error="Wpisz imię.")
+        password = request.form.get("password", "")
+        if not identifier:
+            return render_template("login.html", error="Wpisz imię lub e-mail.")
 
         db = get_db()
-        # Python's .lower() is used instead of SQL COLLATE NOCASE because SQLite's
-        # builtin NOCASE only folds ASCII a-z, not Polish diacritics (Ł/ł, Ż/ż, ...).
-        player = next(
-            (p for p in query_all(db, "SELECT * FROM players") if p["name"].lower() == name.lower()),
-            None,
-        )
-        if player:
-            name = player["name"]  # reuse the spelling recorded at first login
-        if player and player["pin_code"]:
+        player = find_player_by_identifier(db, identifier)
+        name = player["name"] if player else identifier  # reuse recorded spelling
+
+        # A real password (from registering or securing an existing account)
+        # always wins over the legacy 4-digit PIN lock, so setting one can't
+        # accidentally be bypassed by the older, weaker check.
+        if player and player["password_hash"]:
+            if not password:
+                return render_template("login.html", name=name, need_password=True)
+            if not check_password_hash(player["password_hash"], password):
+                return render_template(
+                    "login.html", name=name, need_password=True, error="Nieprawidłowe hasło."
+                )
+        elif player and player["pin_code"]:
             if not code:
                 return render_template("login.html", name=name, need_code=True)
             if not check_password_hash(player["pin_code"], code):
@@ -444,6 +536,137 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = clamp(request.form.get("name", ""), NAME_MAX_LENGTH)
+        email = clamp(request.form.get("email", ""), EMAIL_MAX_LENGTH)
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+
+        error = None
+        if not name or not email or not password:
+            error = "Wypełnij wszystkie pola."
+        elif "@" not in email:
+            error = "Podaj prawidłowy adres e-mail."
+        elif len(password) < PASSWORD_MIN_LENGTH:
+            error = f"Hasło musi mieć co najmniej {PASSWORD_MIN_LENGTH} znaków."
+        elif password != confirm:
+            error = "Hasła nie są takie same."
+
+        db = get_db()
+        if not error:
+            players = query_all(db, "SELECT * FROM players")
+            if any(p["name"].lower() == name.lower() for p in players):
+                error = "Ta nazwa jest już zajęta. Jeśli to Twoje konto, zaloguj się i dodaj hasło w Koncie."
+            elif any(p["email"] and p["email"].lower() == email.lower() for p in players):
+                error = "Ten adres e-mail jest już zarejestrowany."
+
+        if error:
+            return render_template("register.html", error=error, name=name, email=email)
+
+        token = new_token()
+        db.execute(
+            "INSERT INTO players (name, email, password_hash, email_verify_token, email_verify_expires) "
+            "VALUES (?, ?, ?, ?, datetime('now', '+1 day'))",
+            (name, email, generate_password_hash(password), token),
+        )
+        log_action(db, "register", f"Zarejestrowano konto: {name}", actor=name)
+        db.commit()
+        send_verify_email(email, name, token)
+
+        session["name"] = name
+        flash("Konto utworzone! Sprawdź e-mail, aby potwierdzić adres.")
+        return redirect(url_for("games_view"))
+    return render_template("register.html")
+
+
+@app.route("/verify-email/<token>")
+def verify_email(token):
+    db = get_db()
+    player = query_one(
+        db,
+        "SELECT * FROM players WHERE email_verify_token = ? AND email_verify_expires > datetime('now')",
+        (token,),
+    )
+    if not player:
+        flash("Link weryfikacyjny jest nieprawidłowy lub wygasł.")
+        return redirect(url_for("games_view") if current_name() else url_for("login"))
+
+    db.execute(
+        "UPDATE players SET email_verified = 1, email_verify_token = NULL, email_verify_expires = NULL "
+        "WHERE id = ?",
+        (player["id"],),
+    )
+    log_action(db, "verify_email", f"Potwierdzono e-mail: {player['name']}", actor=player["name"])
+    db.commit()
+    flash("Adres e-mail potwierdzony!")
+    return redirect(url_for("games_view") if current_name() else url_for("login"))
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = clamp(request.form.get("email", ""), EMAIL_MAX_LENGTH)
+        db = get_db()
+        player = next(
+            (
+                p for p in query_all(db, "SELECT * FROM players")
+                if p["email"] and p["password_hash"] and p["email"].lower() == email.lower()
+            ),
+            None,
+        )
+        if player:
+            token = new_token()
+            db.execute(
+                "UPDATE players SET password_reset_token = ?, "
+                "password_reset_expires = datetime('now', '+1 hour') WHERE id = ?",
+                (token, player["id"]),
+            )
+            db.commit()
+            send_reset_email(player["email"], player["name"], token)
+        # Same response either way - otherwise this becomes a way to probe
+        # which email addresses have an account.
+        return render_template("forgot_password.html", sent=True)
+    return render_template("forgot_password.html")
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    db = get_db()
+    player = query_one(
+        db,
+        "SELECT * FROM players WHERE password_reset_token = ? AND password_reset_expires > datetime('now')",
+        (token,),
+    )
+    if not player:
+        flash("Link do resetu hasła jest nieprawidłowy lub wygasł.")
+        return redirect(url_for("forgot_password"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+        if len(password) < PASSWORD_MIN_LENGTH:
+            return render_template(
+                "reset_password.html", token=token,
+                error=f"Hasło musi mieć co najmniej {PASSWORD_MIN_LENGTH} znaków.",
+            )
+        if password != confirm:
+            return render_template("reset_password.html", token=token, error="Hasła nie są takie same.")
+
+        db.execute(
+            "UPDATE players SET password_hash = ?, password_reset_token = NULL, "
+            "password_reset_expires = NULL WHERE id = ?",
+            (generate_password_hash(password), player["id"]),
+        )
+        log_action(db, "reset_password", f"Zresetowano hasło: {player['name']}", actor=player["name"])
+        db.commit()
+        session["name"] = player["name"]
+        flash("Hasło zostało zmienione.")
+        return redirect(url_for("games_view"))
+    return render_template("reset_password.html", token=token)
 
 
 @app.route("/")
@@ -593,6 +816,67 @@ def unlock_account():
     db.execute("UPDATE players SET pin_code = NULL WHERE name = ?", (current_name(),))
     log_action(db, "unlock_account", "Zdjęto blokadę konta")
     db.commit()
+    return redirect(url_for("account_view"))
+
+
+@app.route("/konto/secure", methods=["POST"])
+def secure_account():
+    """Adds email+password to an already-authenticated legacy (name-only)
+    account - the "optional upgrade" path. Never touches other players'
+    rows, so there's no way to hijack someone else's name this way."""
+    email = clamp(request.form.get("email", ""), EMAIL_MAX_LENGTH)
+    password = request.form.get("password", "")
+    confirm = request.form.get("confirm", "")
+    name = current_name()
+
+    error = None
+    if not email or not password:
+        error = "Wypełnij wszystkie pola."
+    elif "@" not in email:
+        error = "Podaj prawidłowy adres e-mail."
+    elif len(password) < PASSWORD_MIN_LENGTH:
+        error = f"Hasło musi mieć co najmniej {PASSWORD_MIN_LENGTH} znaków."
+    elif password != confirm:
+        error = "Hasła nie są takie same."
+
+    db = get_db()
+    if not error:
+        others = query_all(db, "SELECT * FROM players WHERE name != ?", (name,))
+        if any(p["email"] and p["email"].lower() == email.lower() for p in others):
+            error = "Ten adres e-mail jest już używany przez inne konto."
+
+    if error:
+        flash(error)
+        return redirect(url_for("account_view"))
+
+    token = new_token()
+    db.execute(
+        "UPDATE players SET email = ?, password_hash = ?, email_verified = 0, "
+        "email_verify_token = ?, email_verify_expires = datetime('now', '+1 day') WHERE name = ?",
+        (email, generate_password_hash(password), token, name),
+    )
+    log_action(db, "secure_account", f"Dodano e-mail/hasło do konta: {name}")
+    db.commit()
+    send_verify_email(email, name, token)
+    flash("Zabezpieczono konto! Sprawdź e-mail, aby potwierdzić adres.")
+    return redirect(url_for("account_view"))
+
+
+@app.route("/konto/resend-verification", methods=["POST"])
+def resend_verification():
+    db = get_db()
+    name = current_name()
+    player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
+    if player and player["email"] and not player["email_verified"]:
+        token = new_token()
+        db.execute(
+            "UPDATE players SET email_verify_token = ?, "
+            "email_verify_expires = datetime('now', '+1 day') WHERE name = ?",
+            (token, name),
+        )
+        db.commit()
+        send_verify_email(player["email"], name, token)
+        flash("Wysłano ponownie e-mail weryfikacyjny.")
     return redirect(url_for("account_view"))
 
 
