@@ -288,10 +288,15 @@ function selectBggResult(input, box, result) {
     var imageInput = group.querySelector(".bgg-image-input");
     if (idInput) idInput.value = result.id;
     if (!imageInput) return;
+    var form = input.closest("form");
     fetch("/bgg/thing/" + result.id, { credentials: "same-origin" })
         .then(function (r) { return r.json(); })
         .then(function (thing) {
             if (thing && thing.image) imageInput.value = thing.image;
+            // Only the game name field has an image input - this is the base
+            // game, so cache its expansions for the "Dodatek" fields to filter
+            // against instead of a second round trip the first time one is used.
+            if (form) form._knownExpansions = (thing && thing.expansions) || [];
         })
         .catch(function () {});
 }
@@ -325,10 +330,91 @@ function renderBggSuggestions(input) {
         .catch(function () {});
 }
 
+// A "Dodatek" field only offers expansions BGG lists under the game's own
+// bgg_id (looked up by the "bgg_id" form field, which only the game name
+// group has - expansion rows use "expansion_bgg_id" instead). The list is
+// fetched once per form and cached on it: eagerly when picking the base game
+// fresh (see selectBggResult above), or lazily here the first time an addon
+// field is used against an already-known bgg_id (e.g. editing an existing
+// game). Resolves to null when there's no base game to look up yet, or an
+// array (possibly empty) once one has been fetched.
+function ensureKnownExpansions(form) {
+    if (form._knownExpansions) return Promise.resolve(form._knownExpansions);
+    if (form._expansionsLoading) return form._expansionsLoading;
+    var idInput = form.querySelector('input[name="bgg_id"]');
+    var baseId = idInput ? idInput.value : "";
+    if (!baseId) return Promise.resolve(null);
+    form._expansionsLoading = fetch("/bgg/thing/" + baseId, { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (thing) { return (thing && thing.expansions) || []; })
+        .catch(function () { return []; })
+        .then(function (result) {
+            form._knownExpansions = result;
+            form._expansionsLoading = null;
+            return result;
+        });
+    return form._expansionsLoading;
+}
+
+function addSuggestionHint(box, text) {
+    var hint = document.createElement("div");
+    hint.className = "game-suggestion-hint";
+    hint.textContent = text;
+    box.appendChild(hint);
+}
+
+function renderExpansionSuggestions(input) {
+    var box = input.parentElement.querySelector(".game-suggestions");
+    if (!box) return;
+    var query = input.value.trim();
+    box.innerHTML = "";
+    if (!query) return;
+
+    var form = input.closest("form");
+    ensureKnownExpansions(form).then(function (known) {
+        // The field changed while the (first, cache-filling) lookup was in
+        // flight - a newer call to this function already owns the result.
+        if (input.value.trim() !== query) return;
+        box.innerHTML = "";
+        if (known === null) {
+            addSuggestionHint(box, "Najpierw wybierz grę bazową z listy BGG, aby zobaczyć jej dodatki.");
+            return;
+        }
+        var matches = known
+            .filter(function (exp) { return exp.name.toLowerCase().indexOf(query.toLowerCase()) !== -1; })
+            .slice(0, 8);
+        matches.forEach(function (result) {
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "game-suggestion";
+            btn.textContent = result.name;
+            btn.addEventListener("mousedown", function (event) {
+                event.preventDefault();
+                selectBggResult(input, box, result);
+            });
+            box.appendChild(btn);
+        });
+        if (!matches.length) {
+            addSuggestionHint(box, known.length ? "Brak dopasowań wśród dodatków tej gry." : "BGG nie zna dodatków tej gry.");
+        }
+    });
+}
+
 document.addEventListener("input", function (event) {
     if (!event.target.matches(".bgg-name-input")) return;
     var input = event.target;
     clearBggSelection(input);
+    if (input.closest(".expansion-row")) {
+        renderExpansionSuggestions(input);
+        return;
+    }
+    // The base game identity may be changing - drop any cached expansion
+    // list so the next addon lookup re-fetches against whatever's picked next.
+    var form = input.closest("form");
+    if (form) {
+        form._knownExpansions = null;
+        form._expansionsLoading = null;
+    }
     clearTimeout(bggSearchTimer);
     bggSearchTimer = setTimeout(function () { renderBggSuggestions(input); }, 300);
 });

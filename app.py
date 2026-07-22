@@ -114,7 +114,11 @@ def bgg_search(query):
 
 
 def bgg_thing(bgg_id):
-    """Box art + canonical name for one BGG game id, or None if it doesn't exist."""
+    """Box art + canonical name for one BGG game id, or None if it doesn't exist.
+    Also lists its expansions - BGG links an expansion back to its base game
+    with a "boardgameexpansion" link marked inbound="true" on the expansion's
+    own thing entry, and the base game's own entry links out to each of its
+    expansions the same way but without that marker."""
     root = bgg_get(BGG_THING_URL, {"id": bgg_id})
     item = root.find("item")
     if item is None:
@@ -123,10 +127,16 @@ def bgg_thing(bgg_id):
     primary_name = next(
         (n.get("value") for n in item.findall("name") if n.get("type") == "primary"), None
     )
+    expansions = [
+        {"id": link.get("id"), "name": link.get("value")}
+        for link in item.findall("link")
+        if link.get("type") == "boardgameexpansion" and link.get("inbound") != "true"
+    ]
     return {
         "id": str(bgg_id),
         "name": primary_name,
         "image": image_el.text if image_el is not None else None,
+        "expansions": expansions,
     }
 
 

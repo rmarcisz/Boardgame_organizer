@@ -561,6 +561,13 @@ button:hover { background: var(--accent-dark); }
     background: #fff3ea;
 }
 
+.game-suggestion-hint {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-style: italic;
+}
+
 .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
