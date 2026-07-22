@@ -39,11 +39,9 @@
                     <div class="card-badges">
                         {% if game['bgg_id'] %}
                         <span class="card-badge" title="Powiązano z BGG">🔗</span>
-                        {% else %}
-                        <span class="card-badge" title="Dodano ręcznie">✏️</span>
                         {% endif %}
                         {% if game['id'] in unread_game_ids %}
-                        <span class="card-badge card-badge-unread" title="Nowe wiadomości">❗</span>
+                        <span class="card-badge card-badge-unread" title="Nowe wiadomości">💬</span>
                         {% endif %}
                     </div>
                     <span class="card-name">{{ game['name'] }}</span>

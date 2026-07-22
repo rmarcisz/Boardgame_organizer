@@ -598,7 +598,7 @@ button:hover { background: var(--accent-dark); }
    card is collapsed or expanded, poking slightly above its top-right corner. */
 .card-badges {
     position: absolute;
-    top: -0.55rem;
+    top: -0.95rem;
     right: 0.6rem;
     display: flex;
     gap: 0.25rem;

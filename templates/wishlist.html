@@ -36,14 +36,12 @@
                     <div class="card-badges">
                         {% if wish['bgg_id'] %}
                         <span class="card-badge" title="Powiązano z BGG">🔗</span>
-                        {% else %}
-                        <span class="card-badge" title="Dodano ręcznie">✏️</span>
                         {% endif %}
                         {% if wish['name'].strip().lower() in taken_game_names %}
                         <span class="card-badge" title="Ktoś już to zabiera">✅</span>
                         {% endif %}
                         {% if wish['id'] in unread_wish_ids %}
-                        <span class="card-badge card-badge-unread" title="Nowe wiadomości">❗</span>
+                        <span class="card-badge card-badge-unread" title="Nowe wiadomości">💬</span>
                         {% endif %}
                     </div>
                     <span class="card-name">{{ wish['name'] }}</span>
