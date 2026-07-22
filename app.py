@@ -300,56 +300,6 @@ def group_wishes(rows):
     return [groups[key] for key in order]
 
 
-def merge_fulfilled_wishes(db):
-    """A wish is already fulfilled if a taken game with the same name exists.
-    Fold each such wisher into that game's interests and carry their wishlist
-    discussion into the game's comment thread, instead of showing the same
-    game twice. Idempotent - safe to run on every startup."""
-    games_by_name = {}
-    for row in query_all(db, "SELECT id, name, origin_wish_requester FROM games"):
-        games_by_name.setdefault(row["name"].strip().lower(), []).append(row)
-
-    for wish in query_all(db, "SELECT * FROM wishes"):
-        matches = games_by_name.get(wish["name"].strip().lower())
-        if not matches:
-            continue
-        requester = wish["requester_name"]
-        primary = matches[0]
-        for game in matches:
-            is_owner = query_one(
-                db, "SELECT 1 FROM games WHERE id = ? AND owner_name = ?", (game["id"], requester)
-            )
-            if is_owner:
-                continue
-            already_interested = query_one(
-                db,
-                "SELECT 1 FROM interests WHERE user_name = ? AND game_id = ?",
-                (requester, game["id"]),
-            )
-            if not already_interested:
-                db.execute(
-                    "INSERT INTO interests (user_name, game_id) VALUES (?, ?)",
-                    (requester, game["id"]),
-                )
-            origin = [n for n in (game["origin_wish_requester"] or "").split(",") if n]
-            if requester not in origin:
-                origin.append(requester)
-                db.execute(
-                    "UPDATE games SET origin_wish_requester = ? WHERE id = ?",
-                    (",".join(origin), game["id"]),
-                )
-                game["origin_wish_requester"] = ",".join(origin)
-
-        db.execute(
-            "INSERT INTO comments (game_id, author_name, text, created_at) "
-            "SELECT ?, author_name, text, created_at FROM wish_comments WHERE wish_id = ?",
-            (primary["id"], wish["id"]),
-        )
-        db.execute("DELETE FROM wish_comments WHERE wish_id = ?", (wish["id"],))
-        db.execute("DELETE FROM wishes WHERE id = ?", (wish["id"],))
-    db.commit()
-
-
 def init_db():
     db = connect_db()
     for statement in SCHEMA_PATH.read_text().split(";"):
@@ -383,7 +333,6 @@ def init_db():
         ("Radek",),
     )
     db.commit()
-    merge_fulfilled_wishes(db)
     # Backfill players from names already present in existing trip data, ordered
     # by earliest activity, so they keep stable, distinct colors.
     existing = {row["name"] for row in query_all(db, "SELECT name FROM players")}
@@ -487,8 +436,7 @@ def games_view():
     name = current_name()
 
     # Duplicates are allowed here - two owners each bringing "Catan" get two
-    # separate cards. Only a wishlist/taken-games name match gets merged,
-    # which happens once at startup in merge_fulfilled_wishes.
+    # separate cards; games and wishlist entries are otherwise unrelated.
     games = sort_by_name(query_all(db, "SELECT * FROM games"))
     for row in games:
         row["owners"] = [row["owner_name"]]
@@ -724,12 +672,6 @@ def delete_game(game_id):
             db, "SELECT * FROM games WHERE id = ? AND owner_name = ?", (game_id, current_name())
         )
     if game:
-        if game["origin_wish_requester"]:
-            for requester in game["origin_wish_requester"].split(","):
-                db.execute(
-                    "INSERT INTO wishes (name, notes, requester_name, image_url, bgg_id) VALUES (?, ?, ?, ?, ?)",
-                    (game["name"], game["notes"], requester, game["image_url"], game["bgg_id"]),
-                )
         db.execute("DELETE FROM games WHERE id = ?", (game_id,))
         log_action(db, "delete_game", f"Usunięto grę: {game['name']} (właściciel: {game['owner_name']})")
         db.commit()
@@ -882,7 +824,7 @@ def delete_wish(wish_id):
     db = get_db()
     if current_is_admin(db):
         # A wish "card" is really one row per requester sharing a name -
-        # admin delete removes the whole card, same as bring_wish does.
+        # admin delete removes the whole card.
         wish = query_one(db, "SELECT * FROM wishes WHERE id = ?", (wish_id,))
         if wish:
             db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
@@ -919,47 +861,6 @@ def join_wish(wish_id):
             )
             log_action(db, "join_wish", f"Dołączono do życzenia: {wish['name']}")
             db.commit()
-    return redirect(url_for("wishlist_view"))
-
-
-@app.route("/wishes/<int:wish_id>/bring", methods=["POST"])
-def bring_wish(wish_id):
-    db = get_db()
-    wish = query_one(db, "SELECT * FROM wishes WHERE id = ?", (wish_id,))
-    if wish:
-        # Everyone who wished for this same game name is fulfilled by one person bringing it.
-        same_name = query_all(
-            db, "SELECT * FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],)
-        )
-        requester_names = [row["requester_name"] for row in same_name]
-        requesters = ",".join(requester_names)
-        cur = db.execute(
-            "INSERT INTO games (name, notes, owner_name, image_url, bgg_id, origin_wish_requester) VALUES (?, ?, ?, ?, ?, ?)",
-            (wish["name"], wish["notes"], current_name(), wish["image_url"], wish["bgg_id"], requesters),
-        )
-        game_id = cur.lastrowid
-        # The original wishers are automatically interested in the game that fulfills their wish.
-        for requester in set(requester_names) - {current_name()}:
-            db.execute(
-                "INSERT INTO interests (user_name, game_id) VALUES (?, ?)",
-                (requester, game_id),
-            )
-
-        # Carry the wishlist discussion over to the new game's comment thread.
-        same_name_ids = [row["id"] for row in same_name]
-        placeholders = ",".join("?" * len(same_name_ids))
-        db.execute(
-            "INSERT INTO comments (game_id, author_name, text, created_at) "
-            f"SELECT ?, author_name, text, created_at FROM wish_comments WHERE wish_id IN ({placeholders})",
-            [game_id] + same_name_ids,
-        )
-        db.execute(
-            f"DELETE FROM wish_comments WHERE wish_id IN ({placeholders})", same_name_ids
-        )
-
-        db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
-        log_action(db, "bring_wish", f"Spełniono życzenie: {wish['name']}")
-        db.commit()
     return redirect(url_for("wishlist_view"))
 
 

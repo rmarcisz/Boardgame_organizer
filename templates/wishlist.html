@@ -48,11 +48,8 @@
 
                     <div class="card-actions">
                         {% if user not in requesters %}
-                        <form method="post" action="{{ url_for('bring_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
-                            <button type="submit">Ja to zabiorę!</button>
-                        </form>
                         <form method="post" action="{{ url_for('join_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
-                            <button type="submit" class="btn-secondary">Też chcę!</button>
+                            <button type="submit">Też chcę!</button>
                         </form>
                         {% endif %}
                         {% for r in requesters %}

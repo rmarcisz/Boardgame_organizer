@@ -3,6 +3,9 @@ __pycache__/
 .venv/
 venv/
 boardgames.db
+boardgames.db.bak
+*.db
+db/
 pid.txt
 run.log
 run.err
