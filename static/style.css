@@ -433,6 +433,7 @@ button:hover { background: var(--accent-dark); }
 }
 
 .card {
+    position: relative;
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 0.2rem 0.8rem;
@@ -440,6 +441,48 @@ button:hover { background: var(--accent-dark); }
     display: flex;
     flex-direction: column;
     min-width: 0;
+}
+
+/* Only ever rendered inside .card-body, which itself is hidden while the
+   card is collapsed - so this naturally only shows up once expanded. */
+.card-edit {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.6rem;
+    z-index: 4;
+}
+
+.card-edit > summary {
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+}
+
+.card-edit > summary::-webkit-details-marker { display: none; }
+
+.card-edit > summary:hover { color: var(--ink); }
+
+.card-edit[open] > summary { color: var(--ink); border-color: var(--accent); }
+
+.card-edit .add-form {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin: 0.25rem 0 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 220px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .card.wish { background: #fff8ef; }

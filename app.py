@@ -508,6 +508,14 @@ def wishlist_view():
 
     wishes = group_wishes(sort_by_name(query_all(db, "SELECT * FROM wishes")))
 
+    # group_wishes merges same-named rows into one card and only keeps the
+    # first row's id/notes - editing needs the current user's own row within
+    # that group, keyed the same way group_wishes keys its groups.
+    my_wish_rows = {
+        row["name"].strip().lower(): row
+        for row in query_all(db, "SELECT * FROM wishes WHERE requester_name = ?", (name,))
+    }
+
     comments_by_wish = {}  # wish_id -> list of comment rows, chronological
     for row in query_all(db, "SELECT * FROM wish_comments ORDER BY created_at"):
         comments_by_wish.setdefault(row["wish_id"], []).append(row)
@@ -516,6 +524,7 @@ def wishlist_view():
         "wishlist.html",
         user=name,
         wishes=wishes,
+        my_wish_rows=my_wish_rows,
         comments_by_wish=comments_by_wish,
     )
 
@@ -634,6 +643,27 @@ def add_game():
         )
         log_action(db, "add_game", f"Dodano grę: {name}")
         db.commit()
+    return redirect(url_for("games_view"))
+
+
+@app.route("/games/<int:game_id>/edit", methods=["POST"])
+def edit_game(game_id):
+    db = get_db()
+    game = query_one(
+        db, "SELECT * FROM games WHERE id = ? AND owner_name = ?", (game_id, current_name())
+    )
+    if game:
+        name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
+        notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
+        image_url = request.form.get("image_url", "").strip() or None
+        bgg_id = request.form.get("bgg_id", "").strip() or None
+        if name:
+            db.execute(
+                "UPDATE games SET name = ?, notes = ?, image_url = ?, bgg_id = ? WHERE id = ?",
+                (name, notes, image_url, bgg_id, game_id),
+            )
+            log_action(db, "edit_game", f"Edytowano grę: {game['name']} -> {name}")
+            db.commit()
     return redirect(url_for("games_view"))
 
 
@@ -776,6 +806,27 @@ def add_wish():
         )
         log_action(db, "add_wish", f"Dodano do listy życzeń: {name}")
         db.commit()
+    return redirect(url_for("wishlist_view"))
+
+
+@app.route("/wishes/<int:wish_id>/edit", methods=["POST"])
+def edit_wish(wish_id):
+    db = get_db()
+    wish = query_one(
+        db, "SELECT * FROM wishes WHERE id = ? AND requester_name = ?", (wish_id, current_name())
+    )
+    if wish:
+        name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
+        notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
+        image_url = request.form.get("image_url", "").strip() or None
+        bgg_id = request.form.get("bgg_id", "").strip() or None
+        if name:
+            db.execute(
+                "UPDATE wishes SET name = ?, notes = ?, image_url = ?, bgg_id = ? WHERE id = ?",
+                (name, notes, image_url, bgg_id, wish_id),
+            )
+            log_action(db, "edit_wish", f"Edytowano życzenie: {wish['name']} -> {name}")
+            db.commit()
     return redirect(url_for("wishlist_view"))
 
 
