@@ -25,6 +25,49 @@
 {% endif %}
 {% endmacro %}
 
+{% macro game_name_field(name='', bgg_id='', image_url='') %}
+<div class="bgg-field-group">
+    <span class="game-name-field">
+        <input type="text" name="name" class="bgg-name-input" value="{{ name }}" placeholder="Nazwa gry" maxlength="100" autocomplete="off" required>
+        <div class="game-suggestions"></div>
+    </span>
+    <input type="hidden" name="bgg_id" class="bgg-id-input" value="{{ bgg_id }}">
+    <input type="hidden" name="image_url" class="bgg-image-input" value="{{ image_url }}">
+</div>
+{% endmacro %}
+
+{% macro language_field(value='Polski') %}
+{% set display = (value | language_flag) ~ ' ' ~ value if value else '🏳 Język' %}
+<details class="lang-select">
+    <summary class="lang-select-btn" title="Język">{{ display }}</summary>
+    <div class="lang-select-menu">
+        <button type="button" class="lang-flag-btn" data-lang="Polski">🇵🇱 Polski</button>
+        <button type="button" class="lang-flag-btn" data-lang="Angielski">🇬🇧 Angielski</button>
+        <button type="button" class="lang-flag-btn" data-lang="Niemiecki">🇩🇪 Niemiecki</button>
+        <input type="text" class="language-input" placeholder="Inny język…" maxlength="50">
+    </div>
+    <input type="hidden" name="language" class="language-value" value="{{ value }}">
+</details>
+{% endmacro %}
+
+{% macro expansions_field(expansions=[]) %}
+<div class="expansions-field">
+    <div class="expansions-list">
+        {% for exp in expansions %}
+        <div class="expansion-row bgg-field-group">
+            <span class="game-name-field">
+                <input type="text" name="expansion_name" class="bgg-name-input" value="{{ exp['name'] }}" placeholder="Dodatek {{ loop.index }} (opcjonalnie)" maxlength="100" autocomplete="off">
+                <div class="game-suggestions"></div>
+            </span>
+            <input type="hidden" name="expansion_bgg_id" class="bgg-id-input" value="{{ exp['bgg_id'] or '' }}">
+            <button type="button" class="link-btn danger remove-expansion-btn" title="Usuń dodatek" aria-label="Usuń dodatek">✕</button>
+        </div>
+        {% endfor %}
+    </div>
+    <button type="button" class="add-expansion-btn link-btn">+ Dodaj dodatek</button>
+</div>
+{% endmacro %}
+
 {% macro comment_thread(comments, data_id, add_action, delete_endpoint, current_user, is_admin=False) %}
 <details class="comments" data-id="{{ data_id }}">
     <summary class="comment-toggle">

@@ -7,12 +7,7 @@
     <details class="quick-add-item">
         <summary>+ Dodaj do listy życzeń</summary>
         <form method="post" action="{{ url_for('add_wish') }}" class="add-form">
-            <span class="game-name-field">
-                <input type="text" name="name" class="bgg-name-input" placeholder="Nazwa gry" maxlength="100" autocomplete="off" required>
-                <div class="game-suggestions"></div>
-            </span>
-            <input type="hidden" name="bgg_id" class="bgg-id-input">
-            <input type="hidden" name="image_url" class="bgg-image-input">
+            {{ macros.game_name_field() }}
             <input type="text" name="notes" placeholder="Notatki – opcjonalnie" maxlength="300">
             <button type="submit">Dodaj do listy życzeń</button>
         </form>
@@ -42,12 +37,7 @@
                     <details class="card-edit">
                         <summary title="Edytuj" aria-label="Edytuj">✎</summary>
                         <form method="post" action="{{ url_for('edit_wish', wish_id=mine['id']) }}" class="add-form ajax-form">
-                            <span class="game-name-field">
-                                <input type="text" name="name" class="bgg-name-input" value="{{ mine['name'] }}" placeholder="Nazwa gry" maxlength="100" autocomplete="off" required>
-                                <div class="game-suggestions"></div>
-                            </span>
-                            <input type="hidden" name="bgg_id" class="bgg-id-input" value="{{ mine['bgg_id'] or '' }}">
-                            <input type="hidden" name="image_url" class="bgg-image-input" value="{{ mine['image_url'] or '' }}">
+                            {{ macros.game_name_field(mine['name'], mine['bgg_id'] or '', mine['image_url'] or '') }}
                             <input type="text" name="notes" value="{{ mine['notes'] or '' }}" placeholder="Notatki – opcjonalnie" maxlength="300">
                             <button type="submit">Zapisz</button>
                         </form>

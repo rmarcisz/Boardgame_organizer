@@ -262,36 +262,43 @@ document.addEventListener("focusout", function (event) {
 });
 
 // BoardGameGeek-backed typeahead for the "add game" / "add to wishlist" name
-// fields: as you type, search BGG so picking a result locks in its bgg_id and
-// box art (hidden inputs) instead of leaving the card without cover art.
+// fields, and repeatable "Dodatek" (expansion) rows: as you type, search BGG
+// so picking a result locks in its bgg_id and box art (hidden inputs) instead
+// of leaving the card without cover art. Hidden inputs are looked up within
+// the input's own .bgg-field-group rather than the whole form, since a game's
+// form can hold several of these groups (the game name plus any expansions).
 var bggSearchTimer = null;
 var bggSearchSeq = 0;
 
-function clearBggSelection(form) {
-    var idInput = form.querySelector(".bgg-id-input");
-    var imageInput = form.querySelector(".bgg-image-input");
+function clearBggSelection(input) {
+    var group = input.closest(".bgg-field-group");
+    if (!group) return;
+    var idInput = group.querySelector(".bgg-id-input");
+    var imageInput = group.querySelector(".bgg-image-input");
     if (idInput) idInput.value = "";
     if (imageInput) imageInput.value = "";
 }
 
-function selectBggResult(form, input, box, result) {
+function selectBggResult(input, box, result) {
     input.value = result.name;
     box.innerHTML = "";
-    var idInput = form.querySelector(".bgg-id-input");
-    var imageInput = form.querySelector(".bgg-image-input");
+    var group = input.closest(".bgg-field-group");
+    if (!group) return;
+    var idInput = group.querySelector(".bgg-id-input");
+    var imageInput = group.querySelector(".bgg-image-input");
     if (idInput) idInput.value = result.id;
+    if (!imageInput) return;
     fetch("/bgg/thing/" + result.id, { credentials: "same-origin" })
         .then(function (r) { return r.json(); })
         .then(function (thing) {
-            if (imageInput && thing && thing.image) imageInput.value = thing.image;
+            if (thing && thing.image) imageInput.value = thing.image;
         })
         .catch(function () {});
 }
 
 function renderBggSuggestions(input) {
     var box = input.parentElement.querySelector(".game-suggestions");
-    var form = input.closest("form");
-    if (!box || !form) return;
+    if (!box) return;
     var query = input.value.trim();
     box.innerHTML = "";
     if (!query) return;
@@ -310,7 +317,7 @@ function renderBggSuggestions(input) {
                 btn.textContent = result.year ? result.name + " (" + result.year + ")" : result.name;
                 btn.addEventListener("mousedown", function (event) {
                     event.preventDefault();
-                    selectBggResult(form, input, box, result);
+                    selectBggResult(input, box, result);
                 });
                 box.appendChild(btn);
             });
@@ -321,7 +328,7 @@ function renderBggSuggestions(input) {
 document.addEventListener("input", function (event) {
     if (!event.target.matches(".bgg-name-input")) return;
     var input = event.target;
-    clearBggSelection(input.closest("form"));
+    clearBggSelection(input);
     clearTimeout(bggSearchTimer);
     bggSearchTimer = setTimeout(function () { renderBggSuggestions(input); }, 300);
 });
@@ -330,4 +337,69 @@ document.addEventListener("focusout", function (event) {
     if (!event.target.matches(".bgg-name-input")) return;
     var box = event.target.parentElement.querySelector(".game-suggestions");
     if (box) box.innerHTML = "";
+});
+
+// Repeatable "Dodatek" (expansion) rows on the add/edit game forms: rows
+// aren't shown until "+ Dodaj dodatek" is clicked, and each can be removed
+// again. Renumbering after add/remove only touches placeholders, never a
+// row the user has already typed into.
+function renumberExpansions(list) {
+    list.querySelectorAll(".expansion-row").forEach(function (row, i) {
+        var input = row.querySelector(".bgg-name-input");
+        if (input && !input.value) input.placeholder = "Dodatek " + (i + 1) + " (opcjonalnie)";
+    });
+}
+
+document.addEventListener("click", function (event) {
+    var addBtn = event.target.closest(".add-expansion-btn");
+    if (addBtn) {
+        var list = addBtn.closest(".expansions-field").querySelector(".expansions-list");
+        var row = document.createElement("div");
+        row.className = "expansion-row bgg-field-group";
+        row.innerHTML =
+            '<span class="game-name-field">' +
+                '<input type="text" name="expansion_name" class="bgg-name-input" placeholder="Dodatek" maxlength="100" autocomplete="off">' +
+                '<div class="game-suggestions"></div>' +
+            "</span>" +
+            '<input type="hidden" name="expansion_bgg_id" class="bgg-id-input">' +
+            '<button type="button" class="link-btn danger remove-expansion-btn" title="Usuń dodatek" aria-label="Usuń dodatek">✕</button>';
+        list.appendChild(row);
+        renumberExpansions(list);
+        return;
+    }
+
+    var removeBtn = event.target.closest(".remove-expansion-btn");
+    if (removeBtn) {
+        var removedFrom = removeBtn.closest(".expansions-list");
+        removeBtn.closest(".expansion-row").remove();
+        renumberExpansions(removedFrom);
+        return;
+    }
+
+    var flagBtn = event.target.closest(".lang-flag-btn");
+    if (flagBtn) {
+        var select = flagBtn.closest(".lang-select");
+        select.querySelector(".language-value").value = flagBtn.dataset.lang;
+        select.querySelector(".lang-select-btn").textContent = flagBtn.textContent;
+        select.querySelector(".language-input").value = "";
+        select.open = false;
+        return;
+    }
+
+    // Clicking anywhere outside an open language dropdown closes it, same as
+    // a native <select> would - <details> otherwise stays open until its own
+    // summary is clicked again.
+    document.querySelectorAll(".lang-select[open]").forEach(function (el) {
+        if (!el.contains(event.target)) el.open = false;
+    });
+});
+
+// Typing a custom language live-updates the hidden value and the button's
+// own label, so it's reflected even without picking one of the quick flags.
+document.addEventListener("input", function (event) {
+    if (!event.target.matches(".language-input")) return;
+    var select = event.target.closest(".lang-select");
+    var value = event.target.value.trim();
+    select.querySelector(".language-value").value = value;
+    select.querySelector(".lang-select-btn").textContent = value || "🏳 Język";
 });

@@ -117,7 +117,10 @@ main {
     padding: 0 0.75rem;
 }
 
-.quick-add-item summary {
+/* Direct-child combinator only - a quick-add form can nest its own
+   <details><summary> (e.g. the language dropdown), which must keep its own
+   styling rather than inheriting this "+ Zabieram grę" toggle look. */
+.quick-add-item > summary {
     cursor: pointer;
     padding: 0.75rem 1rem;
     margin: 0.75rem 0;
@@ -128,11 +131,11 @@ main {
     list-style: none;
 }
 
-.quick-add-item summary:hover {
+.quick-add-item > summary:hover {
     background: var(--accent-dark);
 }
 
-.quick-add-item summary::-webkit-details-marker { display: none; }
+.quick-add-item > summary::-webkit-details-marker { display: none; }
 
 .quick-add-item[open] { padding-bottom: 0.75rem; }
 
@@ -371,10 +374,146 @@ button:hover { background: var(--accent-dark); }
     flex: 1 1 200px;
 }
 
-.game-name-field .game-name-input {
+.game-name-field .game-name-input,
+.game-name-field .bgg-name-input {
     width: 100%;
     display: block;
     white-space: nowrap;
+}
+
+.bgg-field-group {
+    flex: 1 1 200px;
+    min-width: 0;
+}
+
+.name-lang-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    flex-basis: 100%;
+}
+
+.name-lang-row .bgg-field-group {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* A <details>-based dropdown, closed by default: the summary shows the
+   current language and doubles as the "unroll" trigger. */
+.lang-select {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.lang-select-btn {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    list-style: none;
+    cursor: pointer;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.lang-select-btn::-webkit-details-marker { display: none; }
+
+.lang-select[open] > .lang-select-btn { border-color: var(--accent); }
+
+.lang-select-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    z-index: 6;
+    min-width: 170px;
+}
+
+/* .lang-select-menu is a column flex container - .language-input would
+   otherwise also match ".add-form input[type=text]" (2 classes + a type
+   selector), which sets a row-layout flex-basis that becomes a *height* in
+   this column context. Three plain classes here outrank that on the class
+   count alone, regardless of its extra type selector or source order. */
+.add-form .lang-select-menu .language-input {
+    flex: none;
+}
+
+.lang-select-menu .lang-flag-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+}
+
+.lang-flag-btn {
+    background: none;
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.lang-flag-btn:hover {
+    background: var(--border);
+}
+
+.lang-select-menu .language-input {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.expansions-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex-basis: 100%;
+}
+
+.expansions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.expansion-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* .expansion-row also carries .bgg-field-group for the JS/BGG-lookup
+   plumbing, but that class's "flex: 1 1 200px" is meant for a row-layout
+   sibling of the game name field - here it's a column-flex item of
+   .expansions-list, where the same rule would set *height* instead. Two
+   classes reliably outrank the single-class .bgg-field-group rule. */
+.expansions-list .expansion-row {
+    flex: none;
+}
+
+.add-expansion-btn {
+    align-self: flex-start;
+    font-size: 0.85rem;
+}
+
+.expansion-tag {
+    margin-right: 0.25rem;
 }
 
 .game-suggestions {
@@ -481,12 +620,29 @@ button:hover { background: var(--accent-dark); }
     margin: 0.25rem 0 0;
     flex-direction: column;
     flex-wrap: nowrap;
-    width: 220px;
+    width: 260px;
+    max-height: 70vh;
+    overflow-y: auto;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0.6rem;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* In this column-direction popover, flex-grow/basis on a direct child sizes
+   height rather than width - children already span the full width via the
+   default cross-axis stretch, so any row-layout flex sizing (name/language/
+   expansion groups, the notes input, ...) must not carry over here. */
+.card-edit .add-form > * {
+    flex: none;
+}
+
+/* ">* { flex: none }" above loses the specificity war against
+   ".add-form input[type=text]" (2 classes there vs. 1 class + universal
+   here) - the notes input needs its own, more specific override. */
+.card-edit .add-form > input[type="text"] {
+    flex: none;
 }
 
 .card.wish { background: #fff8ef; }
@@ -796,7 +952,10 @@ button:hover { background: var(--accent-dark); }
     .tab { font-size: 0.8rem; padding: 0.65rem 0.5rem; }
     .add-form { flex-direction: column; }
     .add-form input[type="text"],
-    .add-form .game-name-field { flex-basis: auto; }
+    .add-form .game-name-field,
+    .add-form .bgg-field-group,
+    .add-form .name-lang-row,
+    .add-form .expansions-field { flex-basis: auto; }
     .add-form button { width: 100%; }
     .card-grid { grid-template-columns: 1fr; }
     .login-card { margin: 1.5rem auto; padding: 1.5rem; }

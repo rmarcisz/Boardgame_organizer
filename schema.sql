@@ -9,6 +9,14 @@ CREATE TABLE IF NOT EXISTS games (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS game_expansions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    bgg_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS interests (
     user_name TEXT NOT NULL,
     game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,

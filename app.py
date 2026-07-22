@@ -34,6 +34,9 @@ GAME_NAME_MAX_LENGTH = 100
 NOTES_MAX_LENGTH = 300
 COMMENT_MAX_LENGTH = 255
 SESSION_TIME_MAX_LENGTH = 32
+LANGUAGE_MAX_LENGTH = 50
+
+LANGUAGE_FLAGS = {"Angielski": "🇬🇧", "Polski": "🇵🇱", "Niemiecki": "🇩🇪"}
 
 TRIP_START = date(2026, 7, 25)  # Saturday
 TRIP_END = date(2026, 8, 2)  # Sunday
@@ -231,6 +234,11 @@ def name_color(name):
     return NAME_COLORS[int(digest, 16) % len(NAME_COLORS)]
 
 
+@app.template_filter("language_flag")
+def language_flag(value):
+    return LANGUAGE_FLAGS.get(value, "")
+
+
 def track_unread_enabled(player):
     return not player or player["track_unread"] != 0
 
@@ -349,6 +357,7 @@ def init_db():
         ("players", "pin_code", "TEXT"),
         ("players", "track_unread", "INTEGER DEFAULT 1"),
         ("players", "is_admin", "INTEGER DEFAULT 0"),
+        ("games", "language", "TEXT"),
     ]:
         try:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
@@ -485,6 +494,10 @@ def games_view():
     for row in query_all(db, "SELECT * FROM comments ORDER BY created_at"):
         comments_by_game.setdefault(row["game_id"], []).append(row)
 
+    expansions_by_game = {}  # game_id -> list of expansion rows, in add order
+    for row in query_all(db, "SELECT * FROM game_expansions ORDER BY id"):
+        expansions_by_game.setdefault(row["game_id"], []).append(row)
+
     player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
     unread_game_ids = (
         get_unread_game_ids(db, name) if track_unread_enabled(player) else set()
@@ -497,6 +510,7 @@ def games_view():
         interest_names=interest_names,
         my_interests=my_interests,
         comments_by_game=comments_by_game,
+        expansions_by_game=expansions_by_game,
         unread_game_ids=unread_game_ids,
     )
 
@@ -629,18 +643,39 @@ def bgg_thing_route(bgg_id):
         return jsonify(None)
 
 
+def save_game_expansions(db, game_id, replace=False):
+    """Persists the repeatable "Dodatek" rows for a game. Rows are paired by
+    index between the two same-length lists the browser submits, one entry
+    per expansion row in the form."""
+    names = request.form.getlist("expansion_name")
+    bgg_ids = request.form.getlist("expansion_bgg_id")
+    if replace:
+        db.execute("DELETE FROM game_expansions WHERE game_id = ?", (game_id,))
+    for i, raw_name in enumerate(names):
+        name = clamp(raw_name, GAME_NAME_MAX_LENGTH)
+        if not name:
+            continue
+        expansion_bgg_id = bgg_ids[i].strip() if i < len(bgg_ids) and bgg_ids[i].strip() else None
+        db.execute(
+            "INSERT INTO game_expansions (game_id, name, bgg_id) VALUES (?, ?, ?)",
+            (game_id, name, expansion_bgg_id),
+        )
+
+
 @app.route("/games/add", methods=["POST"])
 def add_game():
     name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
     notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
+    language = clamp(request.form.get("language", ""), LANGUAGE_MAX_LENGTH) or None
     image_url = request.form.get("image_url", "").strip() or None
     bgg_id = request.form.get("bgg_id", "").strip() or None
     if name:
         db = get_db()
-        db.execute(
-            "INSERT INTO games (name, notes, owner_name, image_url, bgg_id) VALUES (?, ?, ?, ?, ?)",
-            (name, notes, current_name(), image_url, bgg_id),
+        cur = db.execute(
+            "INSERT INTO games (name, notes, owner_name, image_url, bgg_id, language) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, notes, current_name(), image_url, bgg_id, language),
         )
+        save_game_expansions(db, cur.lastrowid)
         log_action(db, "add_game", f"Dodano grę: {name}")
         db.commit()
     return redirect(url_for("games_view"))
@@ -655,13 +690,15 @@ def edit_game(game_id):
     if game:
         name = clamp(request.form.get("name", ""), GAME_NAME_MAX_LENGTH)
         notes = clamp(request.form.get("notes", ""), NOTES_MAX_LENGTH)
+        language = clamp(request.form.get("language", ""), LANGUAGE_MAX_LENGTH) or None
         image_url = request.form.get("image_url", "").strip() or None
         bgg_id = request.form.get("bgg_id", "").strip() or None
         if name:
             db.execute(
-                "UPDATE games SET name = ?, notes = ?, image_url = ?, bgg_id = ? WHERE id = ?",
-                (name, notes, image_url, bgg_id, game_id),
+                "UPDATE games SET name = ?, notes = ?, image_url = ?, bgg_id = ?, language = ? WHERE id = ?",
+                (name, notes, image_url, bgg_id, language, game_id),
             )
+            save_game_expansions(db, game_id, replace=True)
             log_action(db, "edit_game", f"Edytowano grę: {game['name']} -> {name}")
             db.commit()
     return redirect(url_for("games_view"))

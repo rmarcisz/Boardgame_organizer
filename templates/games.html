@@ -7,12 +7,11 @@
     <details class="quick-add-item">
         <summary>+ Zabieram grę</summary>
         <form method="post" action="{{ url_for('add_game') }}" class="add-form">
-            <span class="game-name-field">
-                <input type="text" name="name" class="bgg-name-input" placeholder="Nazwa gry" maxlength="100" autocomplete="off" required>
-                <div class="game-suggestions"></div>
-            </span>
-            <input type="hidden" name="bgg_id" class="bgg-id-input">
-            <input type="hidden" name="image_url" class="bgg-image-input">
+            <div class="name-lang-row">
+                {{ macros.game_name_field() }}
+                {{ macros.language_field() }}
+            </div>
+            {{ macros.expansions_field() }}
             <input type="text" name="notes" placeholder="Notatki (liczba graczy, czas gry itp.) – opcjonalnie" maxlength="300">
             <button type="submit">Dodaj grę</button>
         </form>
@@ -51,12 +50,11 @@
                     <details class="card-edit">
                         <summary title="Edytuj" aria-label="Edytuj">✎</summary>
                         <form method="post" action="{{ url_for('edit_game', game_id=game['id']) }}" class="add-form ajax-form">
-                            <span class="game-name-field">
-                                <input type="text" name="name" class="bgg-name-input" value="{{ game['name'] }}" placeholder="Nazwa gry" maxlength="100" autocomplete="off" required>
-                                <div class="game-suggestions"></div>
-                            </span>
-                            <input type="hidden" name="bgg_id" class="bgg-id-input" value="{{ game['bgg_id'] or '' }}">
-                            <input type="hidden" name="image_url" class="bgg-image-input" value="{{ game['image_url'] or '' }}">
+                            <div class="name-lang-row">
+                                {{ macros.game_name_field(game['name'], game['bgg_id'] or '', game['image_url'] or '') }}
+                                {{ macros.language_field(game['language'] or '') }}
+                            </div>
+                            {{ macros.expansions_field(expansions_by_game.get(game['id'], [])) }}
                             <input type="text" name="notes" value="{{ game['notes'] or '' }}" placeholder="Notatki (liczba graczy, czas gry itp.) – opcjonalnie" maxlength="300">
                             <button type="submit">Zapisz</button>
                         </form>
@@ -64,6 +62,13 @@
                     {% endif %}
                     {% if game['image_url'] %}<img class="card-thumb" src="{{ game['image_url'] }}" alt="">{% endif %}
                     {% if game['notes'] %}<p class="notes">{{ game['notes'] }}</p>{% endif %}
+                    {% if game['language'] %}<p class="notes">Język: {{ game['language'] | language_flag }} {{ game['language'] }}</p>{% endif %}
+                    {% set expansions = expansions_by_game.get(game['id'], []) %}
+                    {% if expansions %}
+                    <p class="notes">Dodatki:
+                        {% for exp in expansions %}<span class="tag expansion-tag">{{ exp['name'] }}</span>{% endfor %}
+                    </p>
+                    {% endif %}
                     <p class="owner">Zabiera:
                         <span class="tag" style="background-color: {{ game['owner_name'] | name_color }};">{{ game['owner_name'] }}</span>
                     </p>
