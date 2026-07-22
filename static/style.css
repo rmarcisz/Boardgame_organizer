@@ -73,6 +73,22 @@ main {
     padding: 1.5rem;
 }
 
+.site-footer {
+    text-align: center;
+    padding: 1rem 1.5rem 2rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.site-footer a {
+    color: var(--muted);
+    text-decoration: underline;
+}
+
+.site-footer a:hover {
+    color: var(--ink);
+}
+
 .panel {
     background: var(--panel);
     border: 1px solid var(--border);
