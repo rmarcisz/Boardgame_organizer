@@ -481,15 +481,9 @@ def games_view():
         if row["user_name"] == name:
             my_interests.add(row["game_id"])
 
-    wishes = group_wishes(sort_by_name(query_all(db, "SELECT * FROM wishes")))
-
     comments_by_game = {}  # game_id -> list of comment rows, chronological
     for row in query_all(db, "SELECT * FROM comments ORDER BY created_at"):
         comments_by_game.setdefault(row["game_id"], []).append(row)
-
-    comments_by_wish = {}  # wish_id -> list of comment rows, chronological
-    for row in query_all(db, "SELECT * FROM wish_comments ORDER BY created_at"):
-        comments_by_wish.setdefault(row["wish_id"], []).append(row)
 
     player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
     unread_game_ids = (
@@ -500,12 +494,29 @@ def games_view():
         "games.html",
         user=name,
         games=games,
-        wishes=wishes,
         interest_names=interest_names,
         my_interests=my_interests,
         comments_by_game=comments_by_game,
-        comments_by_wish=comments_by_wish,
         unread_game_ids=unread_game_ids,
+    )
+
+
+@app.route("/lista-zyczen")
+def wishlist_view():
+    db = get_db()
+    name = current_name()
+
+    wishes = group_wishes(sort_by_name(query_all(db, "SELECT * FROM wishes")))
+
+    comments_by_wish = {}  # wish_id -> list of comment rows, chronological
+    for row in query_all(db, "SELECT * FROM wish_comments ORDER BY created_at"):
+        comments_by_wish.setdefault(row["wish_id"], []).append(row)
+
+    return render_template(
+        "wishlist.html",
+        user=name,
+        wishes=wishes,
+        comments_by_wish=comments_by_wish,
     )
 
 
@@ -730,7 +741,7 @@ def add_wish_comment(wish_id):
         wish = query_one(db, "SELECT name FROM wishes WHERE id = ?", (wish_id,))
         log_action(db, "add_wish_comment", f"Komentarz do życzenia {wish['name'] if wish else wish_id}: {text}")
         db.commit()
-    return redirect(url_for("games_view"))
+    return redirect(url_for("wishlist_view"))
 
 
 @app.route("/wishes/comments/<int:comment_id>/delete", methods=["POST"])
@@ -748,7 +759,7 @@ def delete_wish_comment(comment_id):
     if comment and (admin or comment["author_name"] == current_name()):
         log_action(db, "delete_wish_comment", f"Usunięto komentarz autora {comment['author_name']}: {comment['text']}")
     db.commit()
-    return redirect(url_for("games_view"))
+    return redirect(url_for("wishlist_view"))
 
 
 @app.route("/wishes/add", methods=["POST"])
@@ -765,7 +776,7 @@ def add_wish():
         )
         log_action(db, "add_wish", f"Dodano do listy życzeń: {name}")
         db.commit()
-    return redirect(url_for("games_view"))
+    return redirect(url_for("wishlist_view"))
 
 
 @app.route("/wishes/<int:wish_id>/delete", methods=["POST"])
@@ -810,7 +821,7 @@ def join_wish(wish_id):
             )
             log_action(db, "join_wish", f"Dołączono do życzenia: {wish['name']}")
             db.commit()
-    return redirect(url_for("games_view"))
+    return redirect(url_for("wishlist_view"))
 
 
 @app.route("/wishes/<int:wish_id>/bring", methods=["POST"])
@@ -851,7 +862,7 @@ def bring_wish(wish_id):
         db.execute("DELETE FROM wishes WHERE name = ? COLLATE NOCASE", (wish["name"],))
         log_action(db, "bring_wish", f"Spełniono życzenie: {wish['name']}")
         db.commit()
-    return redirect(url_for("games_view"))
+    return redirect(url_for("wishlist_view"))
 
 
 @app.route("/rozgrywki")

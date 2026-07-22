@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Wszystkie gry – Zgrani 2026 - planszówkowy organizer{% endblock %}
+{% block title %}Gry – Zgrani 2026 - planszówkowy organizer{% endblock %}
 {% block content %}
 
-<div class="quick-add two-col two-col-mobile">
+<div class="quick-add">
     <details class="quick-add-item">
         <summary>+ Zabieram grę</summary>
         <form method="post" action="{{ url_for('add_game') }}" class="add-form">
@@ -17,22 +17,8 @@
             <button type="submit">Dodaj grę</button>
         </form>
     </details>
-    <details class="quick-add-item">
-        <summary>+ Dodaj do listy życzeń</summary>
-        <form method="post" action="{{ url_for('add_wish') }}" class="add-form">
-            <span class="game-name-field">
-                <input type="text" name="name" class="bgg-name-input" placeholder="Nazwa gry" maxlength="100" autocomplete="off" required>
-                <div class="game-suggestions"></div>
-            </span>
-            <input type="hidden" name="bgg_id" class="bgg-id-input">
-            <input type="hidden" name="image_url" class="bgg-image-input">
-            <input type="text" name="notes" placeholder="Notatki – opcjonalnie" maxlength="300">
-            <button type="submit">Dodaj do listy życzeń</button>
-        </form>
-    </details>
 </div>
 
-<div class="two-col two-col-mobile">
 <section class="panel">
     <h2>Zabierane gry</h2>
 
@@ -94,53 +80,5 @@
         </div>
     </div>
 </section>
-
-<section class="panel">
-    <h2>Lista życzeń</h2>
-
-    {{ macros.list_toolbar('wishes-section') }}
-    <div id="wishes-section" class="ajax-region">
-        {% if not wishes %}
-        <p class="muted">Lista życzeń jest jeszcze pusta.</p>
-        {% endif %}
-
-        <div class="card-grid">
-            {% for wish in wishes %}
-            {% set requesters = wish['requesters'] %}
-            <details class="card wish" data-id="{{ wish['id'] }}" data-name="{{ wish['name'] }}" data-people="{{ requesters | unique | join(',') }}" data-interest="{{ requesters | length }}">
-                <summary>
-                    <span class="card-name">{{ wish['name'] }}</span>
-                    {{ macros.person_avatar(requesters, 'mine' if user in requesters else '') }}
-                </summary>
-                <div class="card-body">
-                    {% if wish['image_url'] %}<img class="card-thumb" src="{{ wish['image_url'] }}" alt="">{% endif %}
-                    {% if wish['notes'] %}<p class="notes">{{ wish['notes'] }}</p>{% endif %}
-
-                    <div class="card-actions">
-                        {% if user not in requesters %}
-                        <form method="post" action="{{ url_for('bring_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
-                            <button type="submit">Ja to zabiorę!</button>
-                        </form>
-                        <form method="post" action="{{ url_for('join_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
-                            <button type="submit" class="btn-secondary">Też chcę!</button>
-                        </form>
-                        {% endif %}
-                        {% for r in requesters %}
-                        <span class="tag" style="background-color: {{ r | name_color }};">{{ r }}</span>
-                        {% endfor %}
-                        {% if is_admin and user not in requesters %}
-                        <form method="post" action="{{ url_for('delete_wish', wish_id=wish['id']) }}" class="inline-form ajax-form">
-                            <button type="submit" class="link-btn danger">Usuń</button>
-                        </form>
-                        {% endif %}
-                        {{ macros.comment_thread(comments_by_wish.get(wish['id'], []), 'comments-wish-' ~ wish['id'], url_for('add_wish_comment', wish_id=wish['id']), 'delete_wish_comment', user, is_admin) }}
-                    </div>
-                </div>
-            </details>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-</div>
 
 {% endblock %}
