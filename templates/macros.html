@@ -33,7 +33,7 @@
     </summary>
     <div class="comment-list">
         {% for comment in comments %}
-        <div class="comment">
+        <div class="comment {{ 'own' if comment['author_name'] == current_user else '' }}">
             <span class="tag" style="background-color: {{ comment['author_name'] | name_color }};">{{ comment['author_name'] }}</span>
             {{ comment['text'] }}
             {% if delete_endpoint and (comment['author_name'] == current_user or is_admin) %}

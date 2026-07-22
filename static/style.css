@@ -7,6 +7,10 @@
     --accent-dark: #9c431f;
     --border: #e8ddd0;
     --danger: #b3261e;
+    --chat-bg: #eef1fa;
+    --chat-border: #d7ddf0;
+    --chat-own-bg: #fdece0;
+    --chat-own-border: #f2cbaa;
 }
 
 * { box-sizing: border-box; }
@@ -577,6 +581,11 @@ button:hover { background: var(--accent-dark); }
 .comments[open] {
     flex-basis: 100%;
     margin-left: 0;
+    margin-top: 0.4rem;
+    background: var(--chat-bg);
+    border: 1px solid var(--chat-border);
+    border-radius: 10px;
+    padding: 0.5rem 0.65rem 0.65rem;
 }
 
 .comment-toggle {
@@ -585,6 +594,11 @@ button:hover { background: var(--accent-dark); }
     font-size: 0.8rem;
     color: var(--muted);
     display: inline-block;
+}
+
+.comments[open] > .comment-toggle {
+    color: var(--ink);
+    font-weight: 600;
 }
 
 .comment-toggle::-webkit-details-marker { display: none; }
@@ -599,7 +613,7 @@ button:hover { background: var(--accent-dark); }
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
-    padding-top: 0.5rem;
+    padding-top: 0.6rem;
 }
 
 .comment {
@@ -607,6 +621,17 @@ button:hover { background: var(--accent-dark); }
     font-size: 0.85rem;
     line-height: 1.4;
     overflow-wrap: break-word;
+    background: var(--panel);
+    border: 1px solid var(--chat-border);
+    border-radius: 8px;
+    padding: 0.35rem 0.6rem;
+}
+
+/* Your own messages get an accent tint so a glance at the thread shows who
+   said what, the way chat apps distinguish your side of the conversation. */
+.comment.own {
+    background: var(--chat-own-bg);
+    border-color: var(--chat-own-border);
 }
 
 .comment .tag {
@@ -631,12 +656,13 @@ button:hover { background: var(--accent-dark); }
 .comment-form {
     display: flex;
     gap: 0.4rem;
+    margin-top: 0.55rem;
 }
 
 .comment-form input {
     flex: 1;
     padding: 0.4rem 0.6rem;
-    border: 1px solid var(--border);
+    border: 1px solid var(--chat-border);
     border-radius: 8px;
     font-size: 0.85rem;
 }
