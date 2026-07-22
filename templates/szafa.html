@@ -3,7 +3,7 @@
 {% block title %}Szafa – Zgrani 2026 - planszówkowy organizer{% endblock %}
 {% block content %}
 
-<div class="quick-add">
+<div class="quick-add two-col two-col-mobile">
     <details class="quick-add-item">
         <summary>+ Dodaj grę do szafy</summary>
         <form method="post" action="{{ url_for('add_collection_game') }}" class="add-form">
@@ -11,6 +11,16 @@
             <input type="text" name="notes" placeholder="Notatki – opcjonalnie" maxlength="300">
             <button type="submit">Dodaj do szafy</button>
         </form>
+    </details>
+    <details class="quick-add-item">
+        <summary>+ Pobierz z BGG</summary>
+        <form method="post" action="{{ url_for('sync_bgg_collection') }}" class="add-form">
+            <input type="text" name="bgg_username" value="{{ bgg_username or '' }}" placeholder="Nazwa użytkownika BGG" maxlength="50" required>
+            <button type="submit">Pobierz posiadane gry</button>
+        </form>
+        {% if not bgg_enabled %}
+        <p class="muted">Synchronizacja z BGG nie jest skonfigurowana na tym serwerze.</p>
+        {% endif %}
     </details>
 </div>
 
@@ -33,6 +43,7 @@
                     {{ macros.person_avatar(requesters) }}
                 </summary>
                 <div class="card-body">
+                    {% if g['image_url'] %}<img class="card-thumb" src="{{ g['image_url'] }}" alt="">{% endif %}
                     {% if g['notes'] %}<p class="notes">{{ g['notes'] }}</p>{% endif %}
 
                     <div class="card-actions">
@@ -73,6 +84,7 @@
                     {{ macros.person_avatar([g['owner_name']]) }}
                 </summary>
                 <div class="card-body">
+                    {% if g['image_url'] %}<img class="card-thumb" src="{{ g['image_url'] }}" alt="">{% endif %}
                     {% if g['notes'] %}<p class="notes">{{ g['notes'] }}</p>{% endif %}
 
                     <div class="card-actions">

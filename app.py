@@ -3,6 +3,7 @@ import os
 import secrets
 import smtplib
 import sqlite3
+import time
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
@@ -27,6 +28,7 @@ TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
 BGG_TOKEN = os.environ.get("BGG_ZGRANI")
 BGG_SEARCH_URL = "https://boardgamegeek.com/xmlapi2/search"
 BGG_THING_URL = "https://boardgamegeek.com/xmlapi2/thing"
+BGG_COLLECTION_URL = "https://boardgamegeek.com/xmlapi2/collection"
 
 SMTP_HOST = os.environ.get("SMTP_HOST")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
@@ -150,6 +152,36 @@ def bgg_thing(bgg_id):
         "image": image_el.text if image_el is not None else None,
         "expansions": expansions,
     }
+
+
+def bgg_collection_owned(username):
+    """A BGG user's owned board games (expansions excluded). BGG generates
+    collection exports asynchronously - a first-time request answers 202
+    while it queues the export, so this polls briefly. Returns None if it
+    never finished in time (caller should ask the user to retry shortly),
+    or a list of {bgg_id, name, image_url} dicts - empty if the account
+    exists but owns nothing, matching plain bgg_get()'s exception behavior
+    for a genuinely bad username/network failure."""
+    headers = {"Authorization": f"Bearer {BGG_TOKEN}"} if BGG_TOKEN else {}
+    params = {"username": username, "own": "1", "excludesubtype": "boardgameexpansion"}
+    for attempt in range(5):
+        response = requests.get(BGG_COLLECTION_URL, params=params, headers=headers, timeout=10)
+        if response.status_code == 202:
+            time.sleep(2)
+            continue
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+        items = []
+        for item in root.findall("item"):
+            name_el = item.find("name")
+            image_el = item.find("image")
+            items.append({
+                "bgg_id": item.get("objectid"),
+                "name": name_el.text if name_el is not None else None,
+                "image_url": image_el.text if image_el is not None else None,
+            })
+        return items
+    return None
 
 
 def send_email(to_addr, subject, body):
@@ -409,6 +441,9 @@ def init_db():
         ("players", "email_verify_expires", "TEXT"),
         ("players", "password_reset_token", "TEXT"),
         ("players", "password_reset_expires", "TEXT"),
+        ("players", "bgg_username", "TEXT"),
+        ("collection_games", "bgg_id", "INTEGER"),
+        ("collection_games", "image_url", "TEXT"),
     ]:
         try:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
@@ -1352,6 +1387,8 @@ def szafa_view():
     for row in query_all(db, "SELECT * FROM collection_comments ORDER BY created_at"):
         comments_by_collection.setdefault(row["collection_game_id"], []).append(row)
 
+    player = query_one(db, "SELECT bgg_username FROM players WHERE name = ?", (name,))
+
     return render_template(
         "szafa.html",
         user=name,
@@ -1360,7 +1397,67 @@ def szafa_view():
         requests_by_game=requests_by_game,
         my_requests=my_requests,
         comments_by_collection=comments_by_collection,
+        bgg_username=player["bgg_username"] if player else None,
+        bgg_enabled=bool(BGG_TOKEN),
     )
+
+
+@app.route("/szafa/sync-bgg", methods=["POST"])
+def sync_bgg_collection():
+    if not BGG_TOKEN:
+        flash("Synchronizacja z BGG nie jest skonfigurowana na tym serwerze.")
+        return redirect(url_for("szafa_view"))
+
+    name = current_name()
+    db = get_db()
+    username = clamp(request.form.get("bgg_username", ""), NAME_MAX_LENGTH)
+    if not username:
+        flash("Podaj swoją nazwę użytkownika BGG.")
+        return redirect(url_for("szafa_view"))
+
+    db.execute("UPDATE players SET bgg_username = ? WHERE name = ?", (username, name))
+    db.commit()
+
+    try:
+        items = bgg_collection_owned(username)
+    except (requests.RequestException, ET.ParseError):
+        flash("Nie udało się połączyć z BGG. Spróbuj ponownie za chwilę.")
+        return redirect(url_for("szafa_view"))
+
+    if items is None:
+        flash("BGG wciąż przygotowuje Twoją kolekcję - spróbuj ponownie za kilka sekund.")
+        return redirect(url_for("szafa_view"))
+    if not items:
+        flash(f'Nie znaleziono posiadanych gier dla użytkownika "{username}" na BGG.')
+        return redirect(url_for("szafa_view"))
+
+    existing_bgg_ids = {
+        row["bgg_id"] for row in query_all(
+            db, "SELECT bgg_id FROM collection_games WHERE owner_name = ? AND bgg_id IS NOT NULL", (name,)
+        )
+    }
+    added = 0
+    for item in items:
+        if not item["name"]:
+            continue
+        bgg_id = int(item["bgg_id"]) if item["bgg_id"] else None
+        if bgg_id and bgg_id in existing_bgg_ids:
+            continue
+        db.execute(
+            "INSERT INTO collection_games (name, owner_name, bgg_id, image_url) VALUES (?, ?, ?, ?)",
+            (clamp(item["name"], GAME_NAME_MAX_LENGTH), name, bgg_id, item["image_url"]),
+        )
+        if bgg_id:
+            existing_bgg_ids.add(bgg_id)
+        added += 1
+
+    log_action(db, "sync_bgg_collection", f"Zaimportowano {added} gier z BGG ({username})")
+    db.commit()
+    if added:
+        flash(f"Zaimportowano {added} gier z Twojej kolekcji BGG.")
+    else:
+        flash("Wszystkie gry z Twojej kolekcji BGG są już dodane do szafy.")
+    return redirect(url_for("szafa_view"))
 
 
 @app.route("/szafa/add", methods=["POST"])

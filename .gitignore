@@ -6,6 +6,7 @@ boardgames.db
 boardgames.db.bak
 *.db
 db/
+collection.csv
 pid.txt
 run.log
 run.err

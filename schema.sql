@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS players (
     email_verify_token TEXT,
     email_verify_expires TEXT,
     password_reset_token TEXT,
-    password_reset_expires TEXT
+    password_reset_expires TEXT,
+    bgg_username TEXT
 );
 
 CREATE TABLE IF NOT EXISTS comments (
@@ -107,6 +108,8 @@ CREATE TABLE IF NOT EXISTS collection_games (
     name TEXT NOT NULL,
     notes TEXT,
     owner_name TEXT NOT NULL,
+    bgg_id INTEGER,
+    image_url TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
