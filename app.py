@@ -40,6 +40,10 @@ APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  # 64KB - plenty for these small text forms
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Secure requires HTTPS - only enforce it when actually deployed (Turso configured),
+# so the cookie still works for local dev over plain http://localhost.
+app.config["SESSION_COOKIE_SECURE"] = bool(TURSO_URL)
 
 NAME_MAX_LENGTH = 50
 GAME_NAME_MAX_LENGTH = 100
@@ -867,8 +871,13 @@ def secure_account():
     confirm = request.form.get("confirm", "")
     name = current_name()
 
+    db = get_db()
+    player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
+
     error = None
-    if not email or not password:
+    if player and player["password_hash"]:
+        error = "To konto jest już zabezpieczone hasłem - zmiana hasła nie jest jeszcze obsługiwana tutaj."
+    elif not email or not password:
         error = "Wypełnij wszystkie pola."
     elif "@" not in email:
         error = "Podaj prawidłowy adres e-mail."
@@ -877,7 +886,6 @@ def secure_account():
     elif password != confirm:
         error = "Hasła nie są takie same."
 
-    db = get_db()
     if not error:
         others = query_all(db, "SELECT * FROM players WHERE name != ?", (name,))
         if any(p["email"] and p["email"].lower() == email.lower() for p in others):
