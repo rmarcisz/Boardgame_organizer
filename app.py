@@ -274,6 +274,27 @@ def get_unread_game_ids(db, user_name):
     }
 
 
+def get_unread_wish_ids(db, user_name):
+    """Wish ids with a comment posted after the user's last visit to that thread."""
+    latest = {
+        row["wish_id"]: row["latest"]
+        for row in query_all(
+            db, "SELECT wish_id, MAX(created_at) AS latest FROM wish_comments GROUP BY wish_id"
+        )
+    }
+    seen = {
+        row["wish_id"]: row["last_seen_at"]
+        for row in query_all(
+            db, "SELECT wish_id, last_seen_at FROM wish_comment_reads WHERE user_name = ?", (user_name,)
+        )
+    }
+    return {
+        wish_id
+        for wish_id, latest_at in latest.items()
+        if wish_id not in seen or latest_at > seen[wish_id]
+    }
+
+
 POLISH_ALPHABET = "aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźż"
 POLISH_ORDER = {ch: i for i, ch in enumerate(POLISH_ALPHABET)}
 
@@ -492,12 +513,23 @@ def wishlist_view():
     for row in query_all(db, "SELECT * FROM wish_comments ORDER BY created_at"):
         comments_by_wish.setdefault(row["wish_id"], []).append(row)
 
+    # Games and wishes are otherwise unrelated (no auto-merge), but a wish
+    # card can still flag that someone's already bringing the same game.
+    taken_game_names = {row["name"].strip().lower() for row in query_all(db, "SELECT name FROM games")}
+
+    player = query_one(db, "SELECT * FROM players WHERE name = ?", (name,))
+    unread_wish_ids = (
+        get_unread_wish_ids(db, name) if track_unread_enabled(player) else set()
+    )
+
     return render_template(
         "wishlist.html",
         user=name,
         wishes=wishes,
         my_wish_rows=my_wish_rows,
         comments_by_wish=comments_by_wish,
+        taken_game_names=taken_game_names,
+        unread_wish_ids=unread_wish_ids,
     )
 
 
@@ -743,6 +775,19 @@ def mark_comments_seen(game_id):
         "VALUES (?, ?, datetime('now')) "
         "ON CONFLICT(user_name, game_id) DO UPDATE SET last_seen_at = excluded.last_seen_at",
         (current_name(), game_id),
+    )
+    db.commit()
+    return ("", 204)
+
+
+@app.route("/wishes/<int:wish_id>/comments/seen", methods=["POST"])
+def mark_wish_comments_seen(wish_id):
+    db = get_db()
+    db.execute(
+        "INSERT INTO wish_comment_reads (user_name, wish_id, last_seen_at) "
+        "VALUES (?, ?, datetime('now')) "
+        "ON CONFLICT(user_name, wish_id) DO UPDATE SET last_seen_at = excluded.last_seen_at",
+        (current_name(), wish_id),
     )
     db.commit()
     return ("", 204)

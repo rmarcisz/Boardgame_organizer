@@ -593,6 +593,38 @@ button:hover { background: var(--accent-dark); }
     min-width: 0;
 }
 
+/* At-a-glance status badges (BGG-linked/freetext, unread, ...) - unlike
+   .card-edit these sit outside .card-body so they stay visible whether the
+   card is collapsed or expanded, poking slightly above its top-right corner. */
+.card-badges {
+    position: absolute;
+    top: -0.55rem;
+    right: 0.6rem;
+    display: flex;
+    gap: 0.25rem;
+    z-index: 3;
+}
+
+.card-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.card-badge-unread {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: white;
+}
+
 /* Only ever rendered inside .card-body, which itself is hidden while the
    card is collapsed - so this naturally only shows up once expanded. */
 .card-edit {

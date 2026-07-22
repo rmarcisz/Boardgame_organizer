@@ -27,8 +27,25 @@
             {% for wish in wishes %}
             {% set requesters = wish['requesters'] %}
             {% set mine = my_wish_rows.get(wish['name'].strip().lower()) %}
-            <details class="card wish" data-id="{{ wish['id'] }}" data-name="{{ wish['name'] }}" data-people="{{ requesters | unique | join(',') }}" data-interest="{{ requesters | length }}">
+            <details class="card wish {{ 'unread' if wish['id'] in unread_wish_ids else '' }}" data-id="{{ wish['id'] }}" data-name="{{ wish['name'] }}" data-people="{{ requesters | unique | join(',') }}" data-interest="{{ requesters | length }}">
                 <summary>
+                    <!-- Badges must live inside <summary> - a closed <details> only
+                         ever renders its <summary>, so any sibling content (even
+                         with display:flex and no [open] guard) gets laid out oddly
+                         while collapsed. Nesting here keeps them visible either way. -->
+                    <div class="card-badges">
+                        {% if wish['bgg_id'] %}
+                        <span class="card-badge" title="Powiązano z BGG">🔗</span>
+                        {% else %}
+                        <span class="card-badge" title="Dodano ręcznie">✏️</span>
+                        {% endif %}
+                        {% if wish['name'].strip().lower() in taken_game_names %}
+                        <span class="card-badge" title="Ktoś już to zabiera">✅</span>
+                        {% endif %}
+                        {% if wish['id'] in unread_wish_ids %}
+                        <span class="card-badge card-badge-unread" title="Nowe wiadomości">❗</span>
+                        {% endif %}
+                    </div>
                     <span class="card-name">{{ wish['name'] }}</span>
                     {{ macros.person_avatar(requesters, 'mine' if user in requesters else '') }}
                 </summary>

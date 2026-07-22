@@ -181,17 +181,26 @@ document.addEventListener("toggle", function (event) {
     if (!el.matches || !el.matches("details")) return;
 
     updateCommentsLayout();
-    if (!el.matches("details.comments") || !el.open || el.dataset.id.indexOf("comments-game-") !== 0) {
-        return;
-    }
+    if (!el.matches("details.comments") || !el.open) return;
 
-    var gameId = el.dataset.id.replace("comments-game-", "");
-    fetch("/games/" + gameId + "/comments/seen", {
+    var id = el.dataset.id;
+    var markSeenUrl = null;
+    if (id.indexOf("comments-game-") === 0) {
+        markSeenUrl = "/games/" + id.replace("comments-game-", "") + "/comments/seen";
+    } else if (id.indexOf("comments-wish-") === 0) {
+        markSeenUrl = "/wishes/" + id.replace("comments-wish-", "") + "/comments/seen";
+    }
+    if (!markSeenUrl) return;
+
+    fetch(markSeenUrl, {
         method: "POST",
         credentials: "same-origin",
     }).then(function () {
         var card = el.closest(".card");
-        if (card) card.classList.remove("unread");
+        if (!card) return;
+        card.classList.remove("unread");
+        var badge = card.querySelector(".card-badge-unread");
+        if (badge) badge.remove();
     });
 }, true);
 

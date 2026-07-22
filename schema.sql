@@ -65,6 +65,13 @@ CREATE TABLE IF NOT EXISTS wish_comments (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS wish_comment_reads (
+    user_name TEXT NOT NULL,
+    wish_id INTEGER NOT NULL REFERENCES wishes(id) ON DELETE CASCADE,
+    last_seen_at TEXT NOT NULL,
+    PRIMARY KEY (user_name, wish_id)
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_name TEXT NOT NULL,
