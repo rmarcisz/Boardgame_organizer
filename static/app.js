@@ -1,9 +1,10 @@
-// Per-list filter (by BGG link status, or "" for everyone - not every
-// toolbar has this control, see macros.list_toolbar's filter='none') and sort
-// (a-z / by number of interested people, ties broken alphabetically). The
-// toolbar lives outside the .ajax-region it controls, so it survives region
-// swaps untouched - after a swap we just re-apply whatever filter/sort was
-// already selected to the fresh cards.
+// Per-list filter (by BGG link status and/or "mine", or "" for everyone -
+// not every toolbar has every option, see macros.list_toolbar's
+// show_bgg_filter/show_mine_filter) and sort (a-z / by number of interested
+// people, ties broken alphabetically). The toolbar lives outside the
+// .ajax-region it controls, so it survives region swaps untouched - after a
+// swap we just re-apply whatever filter/sort was already selected to the
+// fresh cards.
 function applyFilterSort(toolbar, region) {
     var filterSelect = toolbar.querySelector(".filter-select");
     var filterValue = filterSelect ? filterSelect.value : "";
@@ -15,6 +16,7 @@ function applyFilterSort(toolbar, region) {
         cards.forEach(function (card) {
             var matches =
                 !filterValue ||
+                (filterValue === "mine" && card.dataset.mine === "1") ||
                 (filterValue === "bgg" && card.dataset.bgg === "1") ||
                 (filterValue === "freetext" && card.dataset.bgg === "0");
             card.style.display = matches ? "" : "none";

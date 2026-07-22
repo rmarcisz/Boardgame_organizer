@@ -1,12 +1,15 @@
-{% macro list_toolbar(region_id, default_sort='az', filter='bgg') %}
+{% macro list_toolbar(region_id, default_sort='az', show_bgg_filter=True, show_mine_filter=True) %}
 <div class="list-toolbar" data-region="{{ region_id }}">
-    {% if filter == 'bgg' %}
+    {% if show_bgg_filter or show_mine_filter %}
     <label class="toolbar-field">
         <span>Filtruj</span>
         <select class="filter-select">
             <option value="">Wszystkie</option>
+            {% if show_mine_filter %}<option value="mine">Moje</option>{% endif %}
+            {% if show_bgg_filter %}
             <option value="bgg">Z BGG</option>
             <option value="freetext">Bez BGG</option>
+            {% endif %}
         </select>
     </label>
     {% endif %}

@@ -27,7 +27,7 @@
             {% for wish in wishes %}
             {% set requesters = wish['requesters'] %}
             {% set mine = my_wish_rows.get(wish['name'].strip().lower()) %}
-            <details class="card wish {{ 'unread' if wish['id'] in unread_wish_ids else '' }}" data-id="{{ wish['id'] }}" data-name="{{ wish['name'] }}" data-bgg="{{ '1' if wish['bgg_id'] else '0' }}" data-interest="{{ requesters | length }}">
+            <details class="card wish {{ 'unread' if wish['id'] in unread_wish_ids else '' }}" data-id="{{ wish['id'] }}" data-name="{{ wish['name'] }}" data-bgg="{{ '1' if wish['bgg_id'] else '0' }}" data-mine="{{ '1' if user in requesters else '0' }}" data-interest="{{ requesters | length }}">
                 <summary>
                     <!-- Badges must live inside <summary> - a closed <details> only
                          ever renders its <summary>, so any sibling content (even
