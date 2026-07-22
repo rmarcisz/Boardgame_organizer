@@ -30,7 +30,7 @@
         <div class="card-grid">
             {% for game in games %}
             {% set interested = interest_names.get(game['id'], []) %}
-            <details class="card {{ 'unread' if game['id'] in unread_game_ids else '' }}" data-id="{{ game['id'] }}" data-name="{{ game['name'] }}" data-people="{{ (game['owners'] + interested) | unique | join(',') }}" data-interest="{{ interested | length }}">
+            <details class="card {{ 'unread' if game['id'] in unread_game_ids else '' }}" data-id="{{ game['id'] }}" data-name="{{ game['name'] }}" data-bgg="{{ '1' if game['bgg_id'] else '0' }}" data-interest="{{ interested | length }}">
                 <summary>
                     <!-- Badges must live inside <summary> - a closed <details> only
                          ever renders its <summary>, so any sibling content (even

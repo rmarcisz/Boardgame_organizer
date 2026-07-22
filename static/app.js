@@ -1,50 +1,23 @@
-// Per-list filter (by person, or "" for everyone) and sort (a-z / by number
-// of interested people, ties broken alphabetically) controls. The toolbar
-// lives outside the .ajax-region it controls, so it survives region swaps
-// untouched - after a swap we just rebuild its options from the fresh cards
-// and re-apply whatever filter/sort was already selected.
-function collectPeople(region) {
-    var set = new Set();
-    region.querySelectorAll("[data-people]").forEach(function (el) {
-        el.dataset.people.split(",").forEach(function (p) {
-            p = p.trim();
-            if (p) set.add(p);
-        });
-    });
-    return Array.from(set).sort(function (a, b) { return a.localeCompare(b, "pl"); });
-}
-
-function refreshToolbar(toolbar, region) {
-    var select = toolbar.querySelector(".filter-select");
-    if (!select) return;
-    var current = select.value;
-    var people = collectPeople(region);
-
-    select.innerHTML = "";
-    var allOption = document.createElement("option");
-    allOption.value = "";
-    allOption.textContent = "Wszyscy";
-    select.appendChild(allOption);
-    people.forEach(function (name) {
-        var opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-    });
-
-    select.value = people.indexOf(current) !== -1 ? current : "";
-}
-
+// Per-list filter (by BGG link status, or "" for everyone - not every
+// toolbar has this control, see macros.list_toolbar's filter='none') and sort
+// (a-z / by number of interested people, ties broken alphabetically). The
+// toolbar lives outside the .ajax-region it controls, so it survives region
+// swaps untouched - after a swap we just re-apply whatever filter/sort was
+// already selected to the fresh cards.
 function applyFilterSort(toolbar, region) {
-    var filterValue = toolbar.querySelector(".filter-select").value;
+    var filterSelect = toolbar.querySelector(".filter-select");
+    var filterValue = filterSelect ? filterSelect.value : "";
     var sortValue = toolbar.querySelector(".sort-select").value;
 
     region.querySelectorAll(".card-grid").forEach(function (grid) {
         var cards = Array.prototype.slice.call(grid.children);
 
         cards.forEach(function (card) {
-            var people = (card.dataset.people || "").split(",").map(function (p) { return p.trim(); });
-            card.style.display = (!filterValue || people.indexOf(filterValue) !== -1) ? "" : "none";
+            var matches =
+                !filterValue ||
+                (filterValue === "bgg" && card.dataset.bgg === "1") ||
+                (filterValue === "freetext" && card.dataset.bgg === "0");
+            card.style.display = matches ? "" : "none";
         });
 
         cards.sort(function (a, b) {
@@ -61,7 +34,6 @@ function applyFilterSort(toolbar, region) {
 function initToolbar(toolbar) {
     var region = document.getElementById(toolbar.dataset.region);
     if (!region) return;
-    refreshToolbar(toolbar, region);
     applyFilterSort(toolbar, region);
 }
 
@@ -126,10 +98,7 @@ document.addEventListener("submit", function (event) {
                 current.replaceWith(updated);
 
                 var toolbar = document.querySelector('.list-toolbar[data-region="' + id + '"]');
-                if (toolbar) {
-                    refreshToolbar(toolbar, updated);
-                    applyFilterSort(toolbar, updated);
-                }
+                if (toolbar) applyFilterSort(toolbar, updated);
             });
             updateCommentsLayout();
         })
