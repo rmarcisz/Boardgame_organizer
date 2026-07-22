@@ -372,11 +372,29 @@ function addSuggestionHint(box, text) {
     box.appendChild(hint);
 }
 
+function addExpansionResultButtons(box, input, results) {
+    results.forEach(function (result) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "game-suggestion";
+        btn.textContent = result.year ? result.name + " (" + result.year + ")" : result.name;
+        btn.addEventListener("mousedown", function (event) {
+            event.preventDefault();
+            selectBggResult(input, box, result);
+        });
+        box.appendChild(btn);
+    });
+}
+
+var expansionSearchTimer = null;
+var expansionSearchSeq = 0;
+
 function renderExpansionSuggestions(input) {
     var box = input.parentElement.querySelector(".game-suggestions");
     if (!box) return;
     var query = input.value.trim();
     box.innerHTML = "";
+    clearTimeout(expansionSearchTimer);
     if (!query) return;
 
     var form = input.closest("form");
@@ -388,32 +406,46 @@ function renderExpansionSuggestions(input) {
         var matches = known
             ? known.filter(function (exp) { return exp.name.toLowerCase().indexOf(query.toLowerCase()) !== -1; }).slice(0, 8)
             : [];
-        matches.forEach(function (result) {
-            var btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "game-suggestion";
-            btn.textContent = result.name;
-            btn.addEventListener("mousedown", function (event) {
-                event.preventDefault();
-                selectBggResult(input, box, result);
-            });
-            box.appendChild(btn);
-        });
+        addExpansionResultButtons(box, input, matches);
 
-        if (!matches.length) {
-            if (known === null) {
-                addSuggestionHint(box, "Najpierw wybierz grę bazową z listy BGG, aby zobaczyć jej dodatki.");
-            } else if (!known.length) {
-                addSuggestionHint(box, "BGG nie zna dodatków tej gry.");
-            } else {
-                addSuggestionHint(box, "Brak dopasowań wśród dodatków tej gry.");
-            }
+        if (matches.length) {
+            var exactMatch = matches.some(function (m) { return m.name.toLowerCase() === query.toLowerCase(); });
+            if (!exactMatch) addFreetextBggOption(box, input, query);
+            return;
         }
 
-        // Not every expansion is on BGG (or linked to a base game that is) -
-        // freetext stands on its own here too, same as the game name field.
-        var exactMatch = matches.some(function (m) { return m.name.toLowerCase() === query.toLowerCase(); });
-        if (!exactMatch) addFreetextBggOption(box, input, query);
+        if (known === null) {
+            addSuggestionHint(box, "Najpierw wybierz grę bazową z listy BGG, aby zobaczyć jej dodatki.");
+            addFreetextBggOption(box, input, query);
+            return;
+        }
+
+        // Nothing in the base game's own linked expansions matched - BGG
+        // doesn't always link an official expansion back to its base game
+        // (e.g. Wingspan: Asia isn't linked from Wingspan's own thing entry),
+        // so broaden to a general BGG expansion search before giving up.
+        addSuggestionHint(
+            box,
+            (known.length ? "Brak dopasowań wśród dodatków tej gry" : "BGG nie zna dodatków tej gry") + " - szukam szerzej…"
+        );
+        var seq = ++expansionSearchSeq;
+        expansionSearchTimer = setTimeout(function () {
+            fetch("/bgg/search?type=expansion&q=" + encodeURIComponent(query), { credentials: "same-origin" })
+                .then(function (r) { return r.json(); })
+                .then(function (results) {
+                    if (seq !== expansionSearchSeq || input.value.trim() !== query) return;
+                    box.innerHTML = "";
+                    addExpansionResultButtons(box, input, results);
+                    if (!results.length) addSuggestionHint(box, "Brak wyników w wyszukiwaniu BGG.");
+                    var exactMatch = results.some(function (r) { return r.name.toLowerCase() === query.toLowerCase(); });
+                    if (!exactMatch) addFreetextBggOption(box, input, query);
+                })
+                .catch(function () {
+                    if (seq !== expansionSearchSeq || input.value.trim() !== query) return;
+                    box.innerHTML = "";
+                    addFreetextBggOption(box, input, query);
+                });
+        }, 300);
     });
 }
 

@@ -108,9 +108,12 @@ def bgg_get(url, params):
     return ET.fromstring(response.content)
 
 
-def bgg_search(query):
-    """Board games on BGG matching `query`, exact-name matches first."""
-    root = bgg_get(BGG_SEARCH_URL, {"query": query, "type": "boardgame"})
+def bgg_search(query, search_type="boardgame"):
+    """Board games (or, with search_type="boardgameexpansion", expansions) on
+    BGG matching `query`, exact-name matches first. BGG's type filter treats
+    the two as disjoint - a plain "boardgame" search never returns expansions,
+    even ones whose name matches exactly."""
+    root = bgg_get(BGG_SEARCH_URL, {"query": query, "type": search_type})
     results = []
     for item in root.findall("item"):
         name_el = item.find("name")
@@ -934,10 +937,11 @@ def toggle_unread_tracking():
 @app.route("/bgg/search")
 def bgg_search_route():
     query = request.args.get("q", "").strip()
+    search_type = "boardgameexpansion" if request.args.get("type") == "expansion" else "boardgame"
     if not query or not BGG_TOKEN:
         return jsonify([])
     try:
-        return jsonify(bgg_search(query))
+        return jsonify(bgg_search(query, search_type))
     except (requests.RequestException, ET.ParseError):
         return jsonify([])
 
