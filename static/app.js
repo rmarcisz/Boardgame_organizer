@@ -405,13 +405,9 @@ function renderExpansionSuggestions(input) {
         // flight - a newer call to this function already owns the result.
         if (input.value.trim() !== query) return;
         box.innerHTML = "";
-        if (known === null) {
-            addSuggestionHint(box, "Najpierw wybierz grę bazową z listy BGG, aby zobaczyć jej dodatki.");
-            return;
-        }
         var matches = known
-            .filter(function (exp) { return exp.name.toLowerCase().indexOf(query.toLowerCase()) !== -1; })
-            .slice(0, 8);
+            ? known.filter(function (exp) { return exp.name.toLowerCase().indexOf(query.toLowerCase()) !== -1; }).slice(0, 8)
+            : [];
         matches.forEach(function (result) {
             var btn = document.createElement("button");
             btn.type = "button";
@@ -423,9 +419,21 @@ function renderExpansionSuggestions(input) {
             });
             box.appendChild(btn);
         });
+
         if (!matches.length) {
-            addSuggestionHint(box, known.length ? "Brak dopasowań wśród dodatków tej gry." : "BGG nie zna dodatków tej gry.");
+            if (known === null) {
+                addSuggestionHint(box, "Najpierw wybierz grę bazową z listy BGG, aby zobaczyć jej dodatki.");
+            } else if (!known.length) {
+                addSuggestionHint(box, "BGG nie zna dodatków tej gry.");
+            } else {
+                addSuggestionHint(box, "Brak dopasowań wśród dodatków tej gry.");
+            }
         }
+
+        // Not every expansion is on BGG (or linked to a base game that is) -
+        // freetext stands on its own here too, same as the game name field.
+        var exactMatch = matches.some(function (m) { return m.name.toLowerCase() === query.toLowerCase(); });
+        if (!exactMatch) addFreetextBggOption(box, input, query);
     });
 }
 
