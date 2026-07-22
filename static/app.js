@@ -8,6 +8,8 @@
 function applyFilterSort(toolbar, region) {
     var filterSelect = toolbar.querySelector(".filter-select");
     var filterValue = filterSelect ? filterSelect.value : "";
+    var searchInput = toolbar.querySelector(".search-input");
+    var searchValue = searchInput ? searchInput.value.trim().toLowerCase() : "";
     var sortValue = toolbar.querySelector(".sort-select").value;
 
     region.querySelectorAll(".card-grid").forEach(function (grid) {
@@ -15,10 +17,11 @@ function applyFilterSort(toolbar, region) {
 
         cards.forEach(function (card) {
             var matches =
-                !filterValue ||
-                (filterValue === "mine" && card.dataset.mine === "1") ||
-                (filterValue === "bgg" && card.dataset.bgg === "1") ||
-                (filterValue === "freetext" && card.dataset.bgg === "0");
+                (!filterValue ||
+                    (filterValue === "mine" && card.dataset.mine === "1") ||
+                    (filterValue === "bgg" && card.dataset.bgg === "1") ||
+                    (filterValue === "freetext" && card.dataset.bgg === "0")) &&
+                (!searchValue || (card.dataset.name || "").toLowerCase().indexOf(searchValue) !== -1);
             card.style.display = matches ? "" : "none";
         });
 
@@ -46,6 +49,14 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("change", function (event) {
     var el = event.target;
     if (!el.matches(".filter-select, .sort-select")) return;
+    var toolbar = el.closest(".list-toolbar");
+    var region = document.getElementById(toolbar.dataset.region);
+    if (region) applyFilterSort(toolbar, region);
+});
+
+document.addEventListener("input", function (event) {
+    var el = event.target;
+    if (!el.matches(".search-input")) return;
     var toolbar = el.closest(".list-toolbar");
     var region = document.getElementById(toolbar.dataset.region);
     if (region) applyFilterSort(toolbar, region);

@@ -1,5 +1,11 @@
-{% macro list_toolbar(region_id, default_sort='az', show_bgg_filter=True, show_mine_filter=True) %}
+{% macro list_toolbar(region_id, default_sort='az', show_bgg_filter=True, show_mine_filter=True, show_search=False) %}
 <div class="list-toolbar" data-region="{{ region_id }}">
+    {% if show_search %}
+    <label class="toolbar-field toolbar-search">
+        <span>Szukaj</span>
+        <input type="search" class="search-input" placeholder="Szukaj gry…" autocomplete="off">
+    </label>
+    {% endif %}
     {% if show_bgg_filter or show_mine_filter %}
     <label class="toolbar-field">
         <span>Filtruj</span>
