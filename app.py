@@ -1,4 +1,5 @@
 import hashlib
+import io
 import os
 import secrets
 import smtplib
@@ -11,7 +12,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, send_file, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).parent
@@ -39,7 +40,7 @@ APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
-app.config["MAX_CONTENT_LENGTH"] = 64 * 1024  # 64KB - plenty for these small text forms
+app.config["MAX_CONTENT_LENGTH"] = 6 * 1024 * 1024  # 6MB - headroom above SESSION_FILE_MAX_SIZE for multipart overhead
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 # Secure requires HTTPS - only enforce it when actually deployed (Turso configured),
 # so the cookie still works for local dev over plain http://localhost.
@@ -53,6 +54,13 @@ SESSION_TIME_MAX_LENGTH = 32
 LANGUAGE_MAX_LENGTH = 50
 EMAIL_MAX_LENGTH = 120
 PASSWORD_MIN_LENGTH = 8
+FILENAME_MAX_LENGTH = 150
+SESSION_FILE_MAX_SIZE = 5 * 1024 * 1024  # 5 MB - a rulebook photo, PDF scoring sheet, scanned map
+INLINE_SAFE_CONTENT_TYPES = {
+    "application/pdf",
+    "image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp",
+    "text/plain",
+}
 
 LANGUAGE_FLAGS = {"Angielski": "🇬🇧", "Polski": "🇵🇱", "Niemiecki": "🇩🇪"}
 
@@ -526,6 +534,12 @@ def require_login():
         return None
     if current_name() is None:
         return redirect(url_for("login"))
+
+
+@app.errorhandler(413)
+def handle_request_too_large(e):
+    flash("Przesłane dane są za duże.")
+    return safe_redirect_back("sessions_view")
 
 
 def find_player_by_identifier(db, identifier):
@@ -1263,6 +1277,14 @@ def sessions_view():
     for row in query_all(db, "SELECT * FROM session_comments ORDER BY created_at"):
         comments_by_session.setdefault(row["session_id"], []).append(row)
 
+    files_by_session = {}
+    for row in query_all(
+        db,
+        "SELECT id, session_id, filename, content_type, file_size, uploaded_by, created_at "
+        "FROM session_files ORDER BY created_at",
+    ):
+        files_by_session.setdefault(row["session_id"], []).append(row)
+
     known_games = sorted(
         {row["name"] for row in query_all(db, "SELECT DISTINCT name FROM games")},
         key=polish_sort_key,
@@ -1283,6 +1305,7 @@ def sessions_view():
         joins_by_session=joins_by_session,
         my_joins=my_joins,
         comments_by_session=comments_by_session,
+        files_by_session=files_by_session,
         known_games=known_games,
     )
 
@@ -1417,6 +1440,73 @@ def delete_session_comment(comment_id):
         )
     if comment and (admin or comment["author_name"] == current_name()):
         log_action(db, "delete_session_comment", f"Usunięto komentarz autora {comment['author_name']}: {comment['text']}")
+    db.commit()
+    return redirect(url_for("sessions_view"))
+
+
+@app.route("/rozgrywki/<int:session_id>/files/add", methods=["POST"])
+def upload_session_file(session_id):
+    db = get_db()
+    if not current_is_admin(db):
+        return redirect(url_for("sessions_view"))
+    session_row = query_one(db, "SELECT game_name FROM sessions WHERE id = ?", (session_id,))
+    if not session_row:
+        return redirect(url_for("sessions_view"))
+    file = request.files.get("file")
+    if file is None or not file.filename:
+        flash("Wybierz plik do przesłania.")
+        return redirect(url_for("sessions_view"))
+    data = file.read()
+    if not data:
+        flash("Plik jest pusty.")
+        return redirect(url_for("sessions_view"))
+    if len(data) > SESSION_FILE_MAX_SIZE:
+        flash("Plik jest za duży - maksymalnie 5 MB.")
+        return redirect(url_for("sessions_view"))
+    filename = clamp(os.path.basename(file.filename), FILENAME_MAX_LENGTH) or "plik"
+    content_type = clamp(file.content_type or "", 100) or "application/octet-stream"
+    db.execute(
+        "INSERT INTO session_files (session_id, filename, content_type, file_size, data, uploaded_by) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (session_id, filename, content_type, len(data), data, current_name()),
+    )
+    log_action(db, "add_session_file", f"Dodano plik do rozgrywki {session_row['game_name']}: {filename}")
+    db.commit()
+    return redirect(url_for("sessions_view"))
+
+
+@app.route("/rozgrywki/files/<int:file_id>/view")
+def view_session_file(file_id):
+    db = get_db()
+    row = query_one(db, "SELECT filename, content_type, data FROM session_files WHERE id = ?", (file_id,))
+    if not row:
+        flash("Plik nie istnieje.")
+        return redirect(url_for("sessions_view"))
+    content_type = row["content_type"] if row["content_type"] in INLINE_SAFE_CONTENT_TYPES else "application/octet-stream"
+    as_attachment = content_type == "application/octet-stream"
+    response = send_file(
+        io.BytesIO(row["data"]),
+        mimetype=content_type,
+        as_attachment=as_attachment,
+        download_name=row["filename"],
+        conditional=False,
+        max_age=0,
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@app.route("/rozgrywki/files/<int:file_id>/delete", methods=["POST"])
+def delete_session_file(file_id):
+    db = get_db()
+    if not current_is_admin(db):
+        return redirect(url_for("sessions_view"))
+    file_row = query_one(db, "SELECT session_id, filename FROM session_files WHERE id = ?", (file_id,))
+    db.execute("DELETE FROM session_files WHERE id = ?", (file_id,))
+    if file_row:
+        session_row = query_one(db, "SELECT game_name FROM sessions WHERE id = ?", (file_row["session_id"],))
+        label = session_row["game_name"] if session_row else file_row["session_id"]
+        log_action(db, "delete_session_file", f"Usunięto plik z rozgrywki {label}: {file_row['filename']}")
     db.commit()
     return redirect(url_for("sessions_view"))
 

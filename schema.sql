@@ -104,6 +104,17 @@ CREATE TABLE IF NOT EXISTS session_comments (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS session_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    content_type TEXT,
+    file_size INTEGER NOT NULL,
+    data BLOB NOT NULL,
+    uploaded_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS collection_games (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

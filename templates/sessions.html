@@ -46,10 +46,12 @@
                     {% for s in day['sessions'] %}
                     {% set joined = joins_by_session.get(s['id'], []) %}
                     <details class="card{% if s['promoted'] %} card-promoted{% endif %}" data-id="{{ s['id'] }}">
-                        {% if s['promoted'] %}<span class="card-star" title="Wyróżniona rozgrywka">★</span>{% endif %}
                         <summary>
                             <span class="card-name">{{ s['game_name'] }}</span>
-                            <span class="tag" style="background-color: {{ s['organizer_name'] | name_color }};">{{ s['organizer_name'] }}{% if joined %} +{{ joined|length }}{% endif %}</span>
+                            <span class="tag{% if s['promoted'] %} tag-promoted{% endif %}" style="background-color: {{ s['organizer_name'] | name_color }};">
+                                {% if s['promoted'] %}<span class="card-star" title="Wyróżniona rozgrywka">★</span>{% endif %}
+                                {{ s['organizer_name'] }}{% if joined %} +{{ joined|length }}{% endif %}
+                            </span>
                         </summary>
                         <div class="card-body">
                             <p class="notes">{{ s['session_time'].replace('T', ' ') }}</p>
@@ -59,6 +61,32 @@
                                 <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
                                 {% endfor %}
                             </p>
+
+                            {% set files = files_by_session.get(s['id'], []) %}
+                            {% if files or is_admin %}
+                            <div class="session-files">
+                                {% if files %}
+                                <p class="session-files-list">Pliki:
+                                    {% for f in files %}
+                                    <span class="file-tag">
+                                        <a class="file-link" href="{{ url_for('view_session_file', file_id=f['id']) }}" target="_blank" rel="noopener">📎 {{ f['filename'] }}</a>
+                                        {% if is_admin %}
+                                        <form method="post" action="{{ url_for('delete_session_file', file_id=f['id']) }}" class="inline-form file-remove-form">
+                                            <button type="submit" class="link-btn danger file-remove" title="Usuń plik" aria-label="Usuń plik">✕</button>
+                                        </form>
+                                        {% endif %}
+                                    </span>
+                                    {% endfor %}
+                                </p>
+                                {% endif %}
+                                {% if is_admin %}
+                                <form method="post" action="{{ url_for('upload_session_file', session_id=s['id']) }}" class="file-upload-form" enctype="multipart/form-data">
+                                    <input type="file" name="file" required>
+                                    <button type="submit" class="link-btn">Dodaj plik</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            {% endif %}
 
                             <div class="card-actions">
                                 {% if user == s['organizer_name'] %}

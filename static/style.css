@@ -642,14 +642,19 @@ button:hover { background: var(--accent-dark); }
     background: #f0e2c4;
 }
 
+.tag-promoted {
+    position: relative;
+}
+
 .card-star {
     position: absolute;
-    top: -0.75rem;
-    right: 0.6rem;
-    font-size: 1.1rem;
+    top: -0.7rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1rem;
     line-height: 1;
     color: var(--accent-dark);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
     z-index: 3;
 }
 
@@ -886,6 +891,59 @@ button:hover { background: var(--accent-dark); }
 
 .comment .tag {
     margin-right: 0.3rem;
+}
+
+.session-files {
+    margin: 0;
+}
+
+.session-files-list {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.file-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.08rem 0.3rem 0.08rem 0.55rem;
+    font-size: 0.75rem;
+    margin-left: 0.2rem;
+}
+
+.file-link {
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.file-link:hover {
+    text-decoration: underline;
+}
+
+.file-remove-form {
+    display: inline;
+}
+
+.file-remove {
+    padding: 0 0.3rem;
+    text-decoration: none;
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+.file-remove:hover {
+    opacity: 1;
+}
+
+.file-upload-form {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+    flex-wrap: wrap;
 }
 
 .comment-delete-form {
