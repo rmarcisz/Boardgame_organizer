@@ -47,11 +47,9 @@
                     {% set joined = joins_by_session.get(s['id'], []) %}
                     <details class="card{% if s['promoted'] %} card-promoted{% endif %}" data-id="{{ s['id'] }}">
                         <summary>
+                            {% if s['promoted'] %}<span class="card-star" title="Wyróżniona rozgrywka">★</span>{% endif %}
                             <span class="card-name">{{ s['game_name'] }}</span>
-                            <span class="tag{% if s['promoted'] %} tag-promoted{% endif %}" style="background-color: {{ s['organizer_name'] | name_color }};">
-                                {% if s['promoted'] %}<span class="card-star" title="Wyróżniona rozgrywka">★</span>{% endif %}
-                                {{ s['organizer_name'] }}{% if joined %} +{{ joined|length }}{% endif %}
-                            </span>
+                            <span class="tag" style="background-color: {{ s['organizer_name'] | name_color }};">{{ s['organizer_name'] }}{% if joined %} +{{ joined|length }}{% endif %}</span>
                         </summary>
                         <div class="card-body">
                             <p class="notes">{{ s['session_time'].replace('T', ' ') }}</p>
