@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     session_time TEXT NOT NULL,
     notes TEXT,
     organizer_name TEXT NOT NULL,
+    promoted INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -125,6 +126,10 @@ CREATE TABLE IF NOT EXISTS collection_comments (
     author_name TEXT NOT NULL,
     text TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS hidden_days (
+    day_date TEXT PRIMARY KEY
 );
 
 CREATE TABLE IF NOT EXISTS activity_log (

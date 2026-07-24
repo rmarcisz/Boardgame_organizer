@@ -81,6 +81,10 @@ def group_sessions_by_day(sessions):
         days.append(other)
     return days
 
+
+def get_hidden_days(db):
+    return {row["day_date"] for row in query_all(db, "SELECT day_date FROM hidden_days")}
+
 NAME_COLORS = [
     "#c1552c",  # orange
     "#2f6f4e",  # green
@@ -451,6 +455,7 @@ def init_db():
         ("players", "bgg_username", "TEXT"),
         ("collection_games", "bgg_id", "INTEGER"),
         ("collection_games", "image_url", "TEXT"),
+        ("sessions", "promoted", "INTEGER DEFAULT 0"),
     ]:
         try:
             db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
@@ -1263,15 +1268,43 @@ def sessions_view():
         key=polish_sort_key,
     )
 
+    hidden_days = get_hidden_days(db)
+    admin = current_is_admin(db)
+    days = group_sessions_by_day(sessions)
+    for day in days:
+        day["hidden"] = day["date"] is not None and day["date"].isoformat() in hidden_days
+    if not admin:
+        days = [d for d in days if not d["hidden"]]
+
     return render_template(
         "sessions.html",
         user=name,
-        days=group_sessions_by_day(sessions),
+        days=days,
         joins_by_session=joins_by_session,
         my_joins=my_joins,
         comments_by_session=comments_by_session,
         known_games=known_games,
     )
+
+
+@app.route("/rozgrywki/day/<day_date>/toggle-hidden", methods=["POST"])
+def toggle_day_hidden(day_date):
+    db = get_db()
+    if not current_is_admin(db):
+        return redirect(url_for("sessions_view"))
+    try:
+        date.fromisoformat(day_date)
+    except ValueError:
+        return redirect(url_for("sessions_view"))
+    existing = query_one(db, "SELECT 1 FROM hidden_days WHERE day_date = ?", (day_date,))
+    if existing:
+        db.execute("DELETE FROM hidden_days WHERE day_date = ?", (day_date,))
+        log_action(db, "unhide_day", f"Odsłonięto dzień: {day_date}")
+    else:
+        db.execute("INSERT INTO hidden_days (day_date) VALUES (?)", (day_date,))
+        log_action(db, "hide_day", f"Ukryto dzień: {day_date}")
+    db.commit()
+    return redirect(url_for("sessions_view"))
 
 
 @app.route("/rozgrywki/add", methods=["POST"])
@@ -1316,6 +1349,21 @@ def toggle_session_join(session_id):
         )
         log_action(db, "toggle_session_join", f"Dołączono do rozgrywki: {label}")
     db.commit()
+    return redirect(url_for("sessions_view"))
+
+
+@app.route("/rozgrywki/<int:session_id>/promote", methods=["POST"])
+def toggle_session_promoted(session_id):
+    db = get_db()
+    if not current_is_admin(db):
+        return redirect(url_for("sessions_view"))
+    session_row = query_one(db, "SELECT game_name, promoted FROM sessions WHERE id = ?", (session_id,))
+    if session_row:
+        new_value = 0 if session_row["promoted"] else 1
+        db.execute("UPDATE sessions SET promoted = ? WHERE id = ?", (new_value, session_id))
+        action = "Wyróżniono" if new_value else "Cofnięto wyróżnienie"
+        log_action(db, "toggle_session_promoted", f"{action} rozgrywkę: {session_row['game_name']}")
+        db.commit()
     return redirect(url_for("sessions_view"))
 
 

@@ -1,19 +1,25 @@
 {% extends "base.html" %}
 {% import "macros.html" as macros %}
-{% block title %}Rozgrywki – Zgrani 2026 - planszówkowy organizer{% endblock %}
+{% block title %}Aktywności – Zgrani 2026 - planszówkowy organizer{% endblock %}
 {% block content %}
 
 <script id="known-games" type="application/json">{{ known_games | tojson }}</script>
 
 <section class="panel">
-    <h2>Zaplanowane rozgrywki</h2>
+    <h2>Zaplanowane aktywności</h2>
 
     <div id="sessions-section" class="day-list ajax-region">
         {% for day in days %}
-        <details class="day-section" data-id="day-{{ day['date'].isoformat() if day['date'] else 'other' }}" {% if day['sessions'] %}open{% endif %}>
+        <details class="day-section{% if day['hidden'] %} day-hidden{% endif %}" data-id="day-{{ day['date'].isoformat() if day['date'] else 'other' }}" {% if day['sessions'] %}open{% endif %}>
             <summary>
                 <span class="day-label">{{ day['label'] }}</span>
+                {% if day['hidden'] %}<span class="tag day-hidden-badge">Ukryty</span>{% endif %}
                 <span class="day-count">{{ day['sessions'] | length }}</span>
+                {% if is_admin and day['date'] %}
+                <form method="post" action="{{ url_for('toggle_day_hidden', day_date=day['date'].isoformat()) }}" class="inline-form">
+                    <button type="submit" class="link-btn">{% if day['hidden'] %}Odkryj dzień{% else %}Ukryj dzień{% endif %}</button>
+                </form>
+                {% endif %}
             </summary>
 
             <div class="day-body">
@@ -39,7 +45,8 @@
                     {% endif %}
                     {% for s in day['sessions'] %}
                     {% set joined = joins_by_session.get(s['id'], []) %}
-                    <details class="card" data-id="{{ s['id'] }}">
+                    <details class="card{% if s['promoted'] %} card-promoted{% endif %}" data-id="{{ s['id'] }}">
+                        {% if s['promoted'] %}<span class="card-star" title="Wyróżniona rozgrywka">★</span>{% endif %}
                         <summary>
                             <span class="card-name">{{ s['game_name'] }}</span>
                             <span class="tag" style="background-color: {{ s['organizer_name'] | name_color }};">{{ s['organizer_name'] }}{% if joined %} +{{ joined|length }}{% endif %}</span>
@@ -47,7 +54,7 @@
                         <div class="card-body">
                             <p class="notes">{{ s['session_time'].replace('T', ' ') }}</p>
                             {% if s['notes'] %}<p class="notes">{{ s['notes'] }}</p>{% endif %}
-                            <p class="interested">Gra:
+                            <p class="interested">Nazwa:
                                 {% for person in [s['organizer_name']] + joined %}
                                 <span class="tag" style="background-color: {{ person | name_color }};">{{ person }}</span>
                                 {% endfor %}
@@ -70,6 +77,11 @@
                                 {% if is_admin and user != s['organizer_name'] %}
                                 <form method="post" action="{{ url_for('delete_session', session_id=s['id']) }}" class="inline-form">
                                     <button type="submit" class="link-btn danger">Odwołaj</button>
+                                </form>
+                                {% endif %}
+                                {% if is_admin %}
+                                <form method="post" action="{{ url_for('toggle_session_promoted', session_id=s['id']) }}" class="inline-form">
+                                    <button type="submit" class="link-btn">{% if s['promoted'] %}Cofnij wyróżnienie{% else %}Wyróżnij{% endif %}</button>
                                 </form>
                                 {% endif %}
 

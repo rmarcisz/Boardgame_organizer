@@ -398,6 +398,15 @@ button:hover { background: var(--accent-dark); }
     padding-bottom: 1rem;
 }
 
+.day-section.day-hidden {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.day-hidden-badge {
+    background: var(--muted);
+}
+
 .day-add {
     margin-bottom: 0.75rem;
 }
@@ -629,6 +638,21 @@ button:hover { background: var(--accent-dark); }
 /* At-a-glance status badges (BGG-linked/freetext, unread, ...) - unlike
    .card-edit these sit outside .card-body so they stay visible whether the
    card is collapsed or expanded, poking slightly above its top-right corner. */
+.card-promoted {
+    background: #f0e2c4;
+}
+
+.card-star {
+    position: absolute;
+    top: -0.75rem;
+    right: 0.6rem;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: var(--accent-dark);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    z-index: 3;
+}
+
 .card-badges {
     position: absolute;
     top: -0.95rem;
